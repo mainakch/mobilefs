@@ -49,7 +49,7 @@ class Operations(llfuse.Operations):
 
     def root_lookup(self):
         """This function updates the inode <-> path dicts with the root inode."""
-        stat = os.lstat(self.root)
+        #stat = send_command_and_receive_response(("lstat", self.root))
         self.inode_path_map[1] = self.root
         self.path_inode_map[self.root] = 1
 
@@ -86,11 +86,6 @@ class Operations(llfuse.Operations):
         path = os.path.join(parent, name)
 
         stat = send_command_and_receive_response(("lstat", path))
-        # try:
-        #     stat = os.lstat(path)
-        # except OSError as exc:
-        #     log.debug('error in lookup')
-        #     raise FUSEError(exc.errno)
         
         if name != b'.' and name != b'..':
             self.inode_path_map[stat.st_ino] = path
