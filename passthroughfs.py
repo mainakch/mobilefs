@@ -1,11 +1,12 @@
 #!/usr/bin/env python2
 '''
-test_passthrough.py - Example file system for python-llfuse
+passthrough.py - Example file system for python-llfuse
 '''
 
 import os
 import logging
 import sys
+import json
 import llfuse
 from argparse import ArgumentParser
 import errno
@@ -34,31 +35,62 @@ class Operations(llfuse.Operations):
         super(Operations, self).__init__()
         self.root = bytes2str(root)
         self.mountpoint = mountpoint
-        self.inode_path_map = dict()
-        self.path_inode_map = dict()
+        self.inode_path_map = dict() #these are maintained at the client 
+        self.path_inode_map = dict() 
         self.root_lookup()
+        self.server_address = '/tmp/socket_c_and_nc'
                     
     def _full_path(self, partial):
+        """This function expands to the full path on the remote end."""
         if partial.startswith("/"):
             partial = partial[1:]
         path = os.path.join(self.root, partial)
         return path
 
     def root_lookup(self):
+        """This function updates the inode <-> path dicts with the root inode."""
         stat = os.lstat(self.root)
         self.inode_path_map[1] = self.root
         self.path_inode_map[self.root] = 1
-        
+
+    def send_command_and_receive_response(self, command):
+        """This function sends command to the network and returns response. If response
+        is an error it raises an error. command is a tuple the first element of which
+        is a string description of the command and the second to last elements are
+         arguments to the command."""
+
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server_address = self.server_address
+        sock.connect(server_address)
+
+        try:
+            msg = json.dumps(command)
+            sock.sendall(str(len(msg)).zfill(10))
+            sock.sendall(msg)
+
+            length = sock.recv(10)
+            data = sock.recv(int(length)) #change this to a while loop to handle large response
+            response = json.loads(data)
+            if response[0] == "err":
+                raise FUSEError(errno.EREMOTEIO)
+            else:
+                return response[1]
+        finally:
+            sock.close()
+            
     def lookup(self, inode_p, name):
+        """Lookup the name file in inode_p and update inode <-> path dicts"""
         log.debug('lookup %s' % repr((inode_p, name)))
         name = bytes2str(name)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        try:
-            stat = os.lstat(path)
-        except OSError as exc:
-            log.debug('error in lookup')
-            raise FUSEError(exc.errno)
+
+        stat = send_command_and_receive_response(("lstat", path))
+        # try:
+        #     stat = os.lstat(path)
+        # except OSError as exc:
+        #     log.debug('error in lookup')
+        #     raise FUSEError(exc.errno)
         
         if name != b'.' and name != b'..':
             self.inode_path_map[stat.st_ino] = path
@@ -68,12 +100,15 @@ class Operations(llfuse.Operations):
         return self.getattr(stat.st_ino)
 
     def getattr(self, inode):
+        """Get attributes for the inode"""
         log.debug('getattr %s' % repr(inode))
         path = self.inode_path_map[inode]
-        try:
-            stat = os.lstat(path)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+
+        stat = send_command_and_receive_response(("lstat", path))
+        # try:
+        #     stat = os.lstat(path)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
         
         entry = llfuse.EntryAttributes()
         entry.st_ino = stat.st_ino
@@ -98,10 +133,13 @@ class Operations(llfuse.Operations):
     def readlink(self, inode):
         log.debug('readlink %s' % repr(inode))
         path = self.inode_path_map[inode]
-        try:
-            target = os.readlink(path)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+
+        target = send_command_and_receive_response(("readlink", inode))
+        
+        # try:
+        #     target = os.readlink(path)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
         
         return str2bytes(target)
             
@@ -112,8 +150,8 @@ class Operations(llfuse.Operations):
     def readdir(self, inode, off):
         log.debug('readdir %s' % repr(inode))
         path = self.inode_path_map[inode]
-        list_of_entries = os.listdir(path)
-
+        #there s a better way to do this instead of query the remote each time
+        list_of_entries = send_command_and_receive_response(("listdir", path))
         log.debug('readdir %s' % repr(list_of_entries))
         log.debug('offset %d' % off)
 
@@ -130,20 +168,23 @@ class Operations(llfuse.Operations):
         name = bytes2str(name)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        try:
-            os.unlink(path)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+        send_command_and_receive_response(("unlink", path))
+        
+        # try:
+        #     os.unlink(path)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
 
     def rmdir(self, inode_p, name):
         log.debug('rmdir %s' % repr((inode_p, name)))
         name = bytes2str(name)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        try:
-            os.rmdir(path)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+        send_command_and_receive_response(("rmdir", path))
+        # try:
+        #     os.rmdir(path)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
 
     def symlink(self, inode_p, name, target, ctx):
         log.debug('symlink %s' % repr((inode_p, name, target)))
@@ -151,12 +192,14 @@ class Operations(llfuse.Operations):
         target = bytes2str(target)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        try:
-            os.symlink(target, path)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+        send_command_and_receive_response(("symlink", target, path))
         
-        stat = os.lstat(path)
+        # try:
+        #     os.symlink(target, path)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
+        
+        stat = send_command_and_receive_response(("lstat", path))
         self.path_inode_map[path] = stat.st_ino
         self.inode_path_map[stat.st_ino] = path
         
@@ -170,10 +213,12 @@ class Operations(llfuse.Operations):
         parent_new = self.inode_path_map[inode_p_new]
         path_old = os.path.join(parent_old, name_old)
         path_new = os.path.join(parent_new, name_new)
-        try:
-            os.rename(path_old, path_new)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+        send_command_and_receive_response(("rename", path_old, path_new))
+        
+        # try:
+        #     os.rename(path_old, path_new)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
         
         inode = self.path_inode_map[path_old]
         del self.path_inode_map[path_old]
@@ -184,10 +229,13 @@ class Operations(llfuse.Operations):
         new_name = bytes2str(new_name)
         parent = self.inode_path_map[new_inode_p]
         path = os.path.join(parent, new_name)
-        try:
-            os.link(self.inode_path_map[inode], path)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
+
+        send_command_and_receive_response(("link", self.inode_path_map[inode], path))
+        
+        # try:
+        #     os.link(self.inode_path_map[inode], path)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
 
         self.path_inode_map[path] = inode
         self.inode_path_map[inode] = path
@@ -197,13 +245,15 @@ class Operations(llfuse.Operations):
     def setattr(self, inode, attr):
         log.debug('setattr %s' % repr((inode, attr)))
         log.debug(repr((attr.st_mode, self.inode_path_map[inode])))
-        try:
-            if attr.st_mode is not None:
-                os.chmod(self.inode_path_map[inode], attr.st_mode)
-        except OSError as exc:
-            raise FUSEError(exc.errno)
-        return self.getattr(inode)
 
+        if attr.st_mode is not None:
+            send_command_and_receive_response(("chmod", self.inode_path_map[inode], attr.st_mode))
+        # try:
+        #     if attr.st_mode is not None:
+        #         os.chmod(self.inode_path_map[inode], attr.st_mode)
+        # except OSError as exc:
+        #     raise FUSEError(exc.errno)
+        return self.getattr(inode)
 
     def mknod(self, inode_p, name, mode, rdev, ctx):
         log.debug('mknod %s' % name)
@@ -211,7 +261,8 @@ class Operations(llfuse.Operations):
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
 
-        os.mknod(path, mode, rdev)
+        send_command_and_receive_response(("mknod", path, mode, rdev))
+        #os.mknod(path, mode, rdev)
         return self.lookup(inode_p, name)
 
     def mkdir(self, inode_p, name, mode, ctx):
@@ -220,13 +271,15 @@ class Operations(llfuse.Operations):
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
 
-        os.mkdir(path, mode)
+        send_command_and_receive_response(("mkdir", path, mode))
+        #os.mkdir(path, mode)
         return self.lookup(inode_p, name)
 
     def statfs(self):
         log.debug('statfs')
         stat_ = llfuse.StatvfsData()
-        stv = os.statvfs(self.root)
+        stv = send_command_and_receive_response(("statvfs", self.root))
+        #stv = os.statvfs(self.root)
 
         stat_.f_bsize = stv.f_bsize
         stat_.f_frsize = stv.f_frsize
@@ -245,27 +298,34 @@ class Operations(llfuse.Operations):
         # Yeah, unused arguments
         #pylint: disable=W0613
         #self.inode_open_count[inode] += 1
-        return os.open(self.inode_path_map[inode], flags)
+        return send_command_and_receive_response(("open", self.inode_path_map[inode], flags))
+        #return os.open(self.inode_path_map[inode], flags)
         
     def access(self, inode, mode, ctx):
         log.debug('access')
-        # Yeah, could be a function and has unused arguments
+        #Always has access, this may need to be changed for filesystems
+        #where user does not have access
         #pylint: disable=R0201,W0613
         return True
 
     def read(self, fh, offset, length):
         log.debug('read')
-        os.lseek(fh, offset, 0)
-        return os.read(fh, length)
+
+        return send_command_and_receive_response(("lseekread", fh, offset, length))
+        #os.lseek(fh, offset, 0)
+        #return os.read(fh, length)
                 
     def write(self, fh, offset, buf):
         print 'write %s' % buf
+
+        return send_command_and_receive_response(("lseekwrite", fh, offset, buf))
         os.lseek(fh, offset, 0)
         return os.write(fh, buf)
    
     def release(self, fh):
         log.debug('release')
-        os.close(fh)
+        send_command_and_receive_response(("close", fh))
+        #os.close(fh)
         #raise FUSEError(errno.ENOSYS)
         #self.inode_open_count[fh] -= 1
 
