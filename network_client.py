@@ -173,8 +173,10 @@ class Networkclient():
                 #cleanup
                 del self.taskid_to_sock[key]
                 self.outputs.remove(s)
-        except:
-            pass
+                s.close()
+        except Exception as exc:
+            log.debug(repr(exc))
+
 
     def main_loop(self):
         while self.inputs:
