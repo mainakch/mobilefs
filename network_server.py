@@ -3,7 +3,6 @@
 network_server.py - Executes remote requests and send responses back
 '''
 from constants import *
-import llfuse
 
 log = logging.getLogger('network_server')
 log.setLevel(logging.DEBUG)
@@ -11,7 +10,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 log.addHandler(ch)
-
+        
 class Networkserver():
     def __init__(self, server_address, port):
 
@@ -75,23 +74,7 @@ class Networkserver():
                 for name in list_of_dirs:
                     fullname = os.path.join(args[1], name)
                     stat = os.lstat(fullname)
-                    entry = llfuse.EntryAttributes()
-                    entry.st_ino = stat.st_ino
-                    entry.st_mode = stat.st_mode
-                    entry.st_nlink = stat.st_nlink
-                    entry.st_uid = stat.st_uid
-                    entry.st_gid = stat.st_gid
-                    entry.st_rdev = stat.st_dev
-                    entry.st_size = stat.st_size
-                    entry.st_atime = stat.st_atime
-                    entry.st_mtime = stat.st_mtime
-                    entry.st_ctime = stat.st_ctime
-
-                    entry.generation = 0
-                    entry.entry_timeout = 1
-                    entry.attr_timeout = 1
-                    entry.st_blksize = stat.st_blksize
-                    entry.st_blocks = stat.st_blocks
+                    entry = Entryattributes(stat)
                     response.append((name, entry, fullname))
                 
             if args[0] == 'lseekread':
