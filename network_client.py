@@ -219,5 +219,9 @@ if __name__=='__main__':
         sys.stderr.write('Usage: ./network_client.py <hostname> <port>')
         sys.exit(1)
     
+    try:
+        os.remove('/tmp/socket_c_and_nc')
+    except OSError:
+        pass
     network_client = Networkclient(sys.argv[1], int(sys.argv[2]))
     network_client.main_loop()                
