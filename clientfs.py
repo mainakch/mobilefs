@@ -163,7 +163,7 @@ class Operations(llfuse.Operations):
     def readdir(self, inode, offset):
         log.debug('readdir %s' % repr(inode))
         path = self.inode_path_map[inode]
-        #there s a better way to do this instead of querying the remote each time
+
         if offset == 0:
             self.listdir_buffer[path] = self.send_command_and_receive_response(("listdir", path))
             
@@ -176,7 +176,14 @@ class Operations(llfuse.Operations):
             if path in self.listdir_buffer: del self.listdir_buffer[path]
             return []
 
-        return [(str2bytes(name), self.lookup(inode, name), offset+1)]
+        final_response = []
+        ctr = 0
+        for entry in self.listdir_buffer[path]:
+            final_response.append(str2bytes(entry[0]), entry[1], ctr+1)
+            self.inode_path_map[entry.st_ino] = path
+            self.path_inode_map[path] = entry.st_ino
+            
+        return final_response
     
     def unlink(self, inode_p, name):
         log.debug('unlink %s' % repr((inode_p, name)))
