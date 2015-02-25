@@ -164,7 +164,7 @@ class Networkclient():
 
             if self.sock_to_taskid[s] in self.receive_queue:
                 key = self.sock_to_taskid.pop(s)
-                msg = self.receive_queuei.pop(key)
+                msg = self.receive_queue.pop(key)
                 
                 log.debug('Sending response of length %d to filesystem' % len(msg))
                 s.sendall(str(len(msg)).zfill(10))

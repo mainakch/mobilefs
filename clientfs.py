@@ -88,8 +88,7 @@ class Operations(llfuse.Operations):
             log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
                 raise FUSEError(response[1])
-        except: 
-            raise FUSEError(errno.EMSGSIZE)
+            #raise FUSEError(errno.EMSGSIZE)
 
         finally:
             sock.close()
