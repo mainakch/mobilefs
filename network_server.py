@@ -2,15 +2,7 @@
 '''
 network_server.py - Executes remote requests and send responses back
 '''
-import os
-import errno
-import socket
-import json
-import sys
-import select
-import time
-import logging
-import pickle
+from constants import *
 
 log = logging.getLogger('network_server')
 log.setLevel(logging.DEBUG)
@@ -22,7 +14,6 @@ log.addHandler(ch)
 class Networkserver():
     def __init__(self, server_address, port):
 
-        self.retransmission_timeout = 4 #milliseconds
         self.lastsent = 0
         self.lastreceived = 0
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
@@ -132,7 +123,7 @@ class Networkserver():
         log.debug('Received request from network_client')
         try:
             #s is a network client connection
-            data, self.network_client_address = s.recvfrom(512)
+            data, self.network_client_address = s.recvfrom(DATAGRAM_SIZE)
             obj = json.loads(data)
             self.lastreceived = time.time()
             
@@ -186,7 +177,7 @@ class Networkserver():
 
     def send_remote_response(self, s):
         if len(self.order_of_keys_in_chunk_queue)>0:
-            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.retransmission_timeout]
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
             if len(list_of_keys_with_timeout)>0:
                 #assume packet is lost
                 for key in list_of_keys_with_timeout:
@@ -201,8 +192,8 @@ class Networkserver():
 
     def split_task(self, taskid, original_taskid, taskstring):
         #this splits up the taskstring into a list of chunks
-        startpt = range(0, len(taskstring), 100)
-        chunks = [taskstring[pt:pt + 100] for pt in startpt[:-1]]
+        startpt = range(0, len(taskstring), CHUNK_SIZE)
+        chunks = [taskstring[pt:pt + CHUNK_SIZE] for pt in startpt[:-1]]
         chunks.append(taskstring[startpt[-1]:len(taskstring)])
         #smaller the task higher the priority
         ids = [(len(taskstring), taskid, original_taskid, ctr, len(chunks), time.time()) for ctr in range(len(chunks))]

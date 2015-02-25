@@ -5,15 +5,7 @@ network_client.py - Sends remote requests, receives response and returns respons
 #TODO: add network error checking
 #TODO: add user control
 
-import socket
-import os
-import json
-import sys
-import select
-import time
-import logging
-
-from random import randint
+from constants import *
 
 log = logging.getLogger('network_client')
 log.setLevel(logging.DEBUG)
@@ -25,8 +17,6 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self, server_address, port):
         #socket address
-        self.retransmission_timeout = 4 #seconds
-        self.filesystem_timeout = 8 #returns an error if no response after this time in seconds
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
@@ -72,8 +62,8 @@ class Networkclient():
 
     def split_task(self, taskid, taskstring):
         #this splits up the taskstring into a list of chunks
-        startpt = range(0, len(taskstring), 100)
-        chunks = [taskstring[pt:pt + 100] for pt in startpt[:-1]]
+        startpt = range(0, len(taskstring), CHUNK_SIZE)
+        chunks = [taskstring[pt:pt + CHUNK_SIZE] for pt in startpt[:-1]]
         chunks.append(taskstring[startpt[-1]:len(taskstring)])
         #smaller the task higher the priority
         ids = [(len(taskstring), taskid, -1, ctr, len(chunks), time.time()) for ctr in range(len(chunks))]
@@ -115,7 +105,7 @@ class Networkclient():
 
     def handle_remote_filesystem_response(self, s):
         log.debug('Received data from network server')
-        data, self.network_server_address = s.recvfrom(512)
+        data, self.network_server_address = s.recvfrom(DATAGRAM_SIZE)
         obj = json.loads(data)
         self.lastreceived = time.time()
         
@@ -150,7 +140,7 @@ class Networkclient():
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
         if len(self.order_of_keys_in_chunk_queue)>0:
-            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.retransmission_timeout]
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
             if len(list_of_keys_with_timeout)>0:
                 log.debug('retransmission timeout event')
                 #assume packet is lost
@@ -167,20 +157,24 @@ class Networkclient():
 
     def send_response_to_local_filesystem(self, s):
         #TODO: add code to handle network error
-        if self.sock_to_timestamp[s] < time.time() - self.filesystem_timeout:
-            #pass
+        try:
+            if self.sock_to_timestamp[s] < time.time() - FILESYSTEM_TIMEOUT:
+                #pass
+                pass
+
+            if self.sock_to_taskid[s] in self.receive_queue:
+                key = self.sock_to_taskid.pop(s)
+                msg = self.receive_queuei.pop(key)
+                
+                log.debug('Sending response of length %d to filesystem' % len(msg))
+                s.sendall(str(len(msg)).zfill(10))
+                s.sendall(msg)
+
+                #cleanup
+                del self.taskid_to_sock[key]
+                self.outputs.remove(s)
+        except:
             pass
-
-        if self.sock_to_taskid[s] in self.receive_queue:
-            log.debug('Sending response to filesystem')
-            s.sendall(str(len(self.receive_queue[self.sock_to_taskid[s]])).zfill(10))
-            s.sendall(self.receive_queue[self.sock_to_taskid[s]])
-
-            #cleanup
-            del self.taskid_to_sock[self.sock_to_taskid[s]]
-            del self.receive_queue[self.sock_to_taskid[s]]
-            del self.sock_to_taskid[s]
-            self.outputs.remove(s)
 
     def main_loop(self):
         while self.inputs:
