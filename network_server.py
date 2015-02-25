@@ -20,7 +20,7 @@ ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(me
 log.addHandler(ch)
 
 class Networkserver():
-    def __init__(self):
+    def __init__(self, server_address, port):
 
         self.retransmission_timeout = 1 #milliseconds
         self.lastsent = 0
@@ -28,7 +28,7 @@ class Networkserver():
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
         #socket address
-        self.public_address = ("corn23.stanford.edu", 60002)
+        self.public_address = (server_address, port)
 
         #list of sockets
         self.network_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -228,5 +228,8 @@ class Networkserver():
                     self.outputs.remove(s)
 
 if __name__=='__main__':
-    network_server = Networkserver()
+    if len(sys.argv)<3:
+        sys.stderr.write('Usage: ./network_server.py <hostname> <port>')
+        sys.exit(1)
+    network_server = Networkserver(sys.argv[1], int(sys.argv[2]))
     network_server.main_loop()

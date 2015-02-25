@@ -22,7 +22,7 @@ ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(me
 log.addHandler(ch)
 
 class Networkclient():
-    def __init__(self):
+    def __init__(self, server_address, port):
         #socket address
         self.retransmission_timeout = 1 #seconds
         self.filesystem_timeout = 2 #returns an error if no response after this time in seconds
@@ -31,7 +31,7 @@ class Networkclient():
 
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
-        self.network_server_address = ('corn23.stanford.edu', 60002)
+        self.network_server_address = (server_address, port)
         self.client_address = '/tmp/socket_c_and_nc'
 
         #list of sockets
@@ -215,5 +215,9 @@ class Networkclient():
                 #s.close()
 
 if __name__=='__main__':
-    network_client = Networkclient()
+    if len(sys.argv)<3:
+        sys.stderr.write('Usage: ./network_client.py <hostname> <port>')
+        sys.exit(1)
+    
+    network_client = Networkclient(sys.argv[1], int(sys.argv[2]))
     network_client.main_loop()                
