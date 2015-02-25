@@ -28,7 +28,7 @@ class Networkserver():
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
         #socket address
-        self.public_address = ("corn30.stanford.edu", 60002)
+        self.public_address = ("corn23.stanford.edu", 60002)
 
         #list of sockets
         self.network_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
