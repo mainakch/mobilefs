@@ -179,9 +179,10 @@ class Operations(llfuse.Operations):
         final_response = []
         ctr = 0
         for entry in self.listdir_buffer[path]:
-            final_response.append(str2bytes(entry[0]), entry[1], ctr+1)
-            self.inode_path_map[entry.st_ino] = path
-            self.path_inode_map[path] = entry.st_ino
+            final_response.append((str2bytes(entry[0]), entry[1], ctr+1))
+            self.inode_path_map[entry[1].st_ino] = path
+            self.path_inode_map[path] = entry[1].st_ino
+            ctr += 1
             
         return final_response
     

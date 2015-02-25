@@ -162,6 +162,9 @@ class Networkclient():
                 #pass
                 pass
 
+            if s not in self.sock_to_taskid:
+                return
+
             if self.sock_to_taskid[s] in self.receive_queue:
                 key = self.sock_to_taskid.pop(s)
                 msg = self.receive_queue.pop(key)
@@ -173,9 +176,12 @@ class Networkclient():
                 #cleanup
                 del self.taskid_to_sock[key]
                 self.outputs.remove(s)
-                s.close()
+                #close this after writing is done
+                #s.close() 
+
         except Exception as exc:
             log.debug(repr(exc))
+            
 
 
     def main_loop(self):
@@ -187,6 +193,7 @@ class Networkclient():
                     connection, _ = s.accept()
                     connection.setblocking(0)
                     self.inputs.append(connection)
+                    log.debug('number of connections %d' % len(self.inputs))
                 if s is not self.unix_server and s.family == socket.AF_UNIX:
                     log.debug('Listen to filesystem connection')
                     #s is a client connection from a local process

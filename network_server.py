@@ -72,7 +72,7 @@ class Networkserver():
             if args[0] == 'listdir':
                 list_of_dirs = os.listdir(args[1])
                 response = []
-                for name in list_dirs:
+                for name in list_of_dirs:
                     fullname = os.path.join(args[1], name)
                     stat = os.lstat(fullname)
                     entry = llfuse.EntryAttributes()
@@ -151,7 +151,7 @@ class Networkserver():
             self.lastreceived = time.time()
             
             if obj[2] == 'ack':
-                log.debug('ack %s' % repr(obj))
+                log.debug('ack')
                 #find out key info
                 candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
                 #remove from chunk_queue
@@ -161,7 +161,7 @@ class Networkserver():
                 del self.chunk_queue[key]
 
             if obj[2] == 'pac' and obj[0][0] not in self.completed_tasks:
-                log.debug('pac %s' % repr(obj))
+                log.debug('pac')
                 #add to receive chunk queue queue
                 key = self.augment_timestamp_info_key(obj[0])
                 val = obj[1]
