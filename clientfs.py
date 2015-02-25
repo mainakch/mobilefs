@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 '''
-passthrough.py - Example file system for python-llfuse
+clientfs.py - Example file system for python-llfuse
 '''
 
 import os
@@ -41,6 +41,7 @@ class Operations(llfuse.Operations):
         self.path_inode_map = dict() 
         self.root_lookup()
         self.server_address = '/tmp/socket_c_and_nc'
+        self.listdir_buffer = {}
                     
     def _full_path(self, partial):
         """This function expands to the full path on the remote end."""
@@ -53,6 +54,16 @@ class Operations(llfuse.Operations):
         """This function updates the inode <-> path dicts with the root inode."""
         self.inode_path_map[1] = self.root
         self.path_inode_map[self.root] = 1
+
+    def recvall(self, sock, count):
+        """This receives count bytes from the sock stream"""
+        buf = b''
+        while count:
+            newbuf = sock.recv(count)
+            if not newbuf: return None
+            buf += newbuf
+            count -= len(newbuf)
+        return buf
 
     def send_command_and_receive_response(self, command):
         """This function sends command to the network and returns response. If response
@@ -72,11 +83,14 @@ class Operations(llfuse.Operations):
 
             length = sock.recv(10)
             log.debug(str(length))
-            data = sock.recv(int(length)) #change this to a while loop to handle large response
-            log.debug(data)
+            data = self.recvall(sock, int(length)) #change this to a while loop to handle large response
             response = pickle.loads(data)
+            log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
                 raise FUSEError(response[1])
+        except: 
+            raise FUSEError(errno.EMSGSIZE)
+
         finally:
             sock.close()
         return response[1]
@@ -147,22 +161,24 @@ class Operations(llfuse.Operations):
         log.debug('opendir %s' % repr(inode))
         return inode
 
-    def readdir(self, inode, off):
+    def readdir(self, inode, offset):
         log.debug('readdir %s' % repr(inode))
         path = self.inode_path_map[inode]
         #there s a better way to do this instead of querying the remote each time
-        list_of_entries = self.send_command_and_receive_response(("listdir", path))
-        log.debug('readdir %s' % repr(list_of_entries))
-        log.debug('offset %d' % off)
+        if offset == 0:
+            self.listdir_buffer[path] = self.send_command_and_receive_response(("listdir", path))
+            
+        #log.debug('readdir %s' % repr(list_of_entries))
+        log.debug('readdir offset %d' % offset)
 
         try:
-            name = list_of_entries[off]
+            name = self.listdir_buffer[path][offset]
         except:
-            raise FUSEError(1)
+            if path in self.listdir_buffer: del self.listdir_buffer[path]
+            return []
 
-        off += 1
-        return [(str2bytes(name), self.lookup(inode, name), off)]
-
+        return [(str2bytes(name), self.lookup(inode, name), offset+1)]
+    
     def unlink(self, inode_p, name):
         log.debug('unlink %s' % repr((inode_p, name)))
         name = bytes2str(name)
