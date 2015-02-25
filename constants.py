@@ -15,7 +15,7 @@ import errno
 
 from random import randint
 
-CHUNK_SIZE = 400
+CHUNK_SIZE = 100
 DATAGRAM_SIZE = 512
 RETRANSMISSION_TIMEOUT = 4 #seconds
 FILESYSTEM_TIMEOUT = 8
