@@ -25,8 +25,8 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self, server_address, port):
         #socket address
-        self.retransmission_timeout = 1 #seconds
-        self.filesystem_timeout = 2 #returns an error if no response after this time in seconds
+        self.retransmission_timeout = 4 #seconds
+        self.filesystem_timeout = 8 #returns an error if no response after this time in seconds
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
