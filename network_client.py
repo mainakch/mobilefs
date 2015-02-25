@@ -154,7 +154,7 @@ class Networkclient():
                 log.debug('retransmission timeout event')
                 #assume packet is lost
                 for key in list_of_keys_with_timeout:
-                    if key in unacknowledged_packets: del self.unacknowledged_packets[key]
+                    if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
 
             if len(self.unacknowledged_packets.keys())<1:
                 log.debug('send packets to remote filesystem')
@@ -168,6 +168,7 @@ class Networkclient():
         #TODO: add code to handle network error
         if self.sock_to_timestamp[s] < time.time() - self.filesystem_timeout:
             #pass
+            pass
 
         if self.sock_to_taskid[s] in self.receive_queue:
             log.debug('Sending response to filesystem')
