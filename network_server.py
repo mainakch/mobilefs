@@ -190,7 +190,7 @@ class Networkserver():
             if len(list_of_keys_with_timeout)>0:
                 #assume packet is lost
                 for key in list_of_keys_with_timeout:
-                    if key in unacknowledged_packets: del self.unacknowledged_packets[key]
+                    if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
 
             if len(self.unacknowledged_packets.keys())<1:
                 log.debug('send packets to remote filesystem')
