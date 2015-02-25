@@ -51,7 +51,6 @@ class Operations(llfuse.Operations):
 
     def root_lookup(self):
         """This function updates the inode <-> path dicts with the root inode."""
-        #stat = self.send_command_and_receive_response(("lstat", self.root))
         self.inode_path_map[1] = self.root
         self.path_inode_map[self.root] = 1
 

@@ -197,7 +197,7 @@ class Networkserver():
                 key = self.order_of_keys_in_chunk_queue[0]
                 self.unacknowledged_packets[key] = time.time()
                 self.lastsent = time.time()
-                s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
+                s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_client_address)
 
     def split_task(self, taskid, original_taskid, taskstring):
         #this splits up the taskstring into a list of chunks

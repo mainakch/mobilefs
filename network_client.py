@@ -15,6 +15,7 @@ import logging
 from random import randint
 
 log = logging.getLogger('network_client')
+log.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
@@ -29,7 +30,7 @@ class Networkclient():
 
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
-        self.network_server_address = ('corn30.stanford.edu', 60002)
+        self.network_server_address = ('corn23.stanford.edu', 60002)
         self.client_address = '/tmp/socket_c_and_nc'
 
         #list of sockets
@@ -146,7 +147,7 @@ class Networkclient():
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
         if len(self.order_of_keys_in_chunk_queue)>0:
-            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.timeout]
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.retransmission_timeout]
             if len(list_of_keys_with_timeout)>0:
                 #assume packet is lost
                 for key in list_of_keys_with_timeout:
