@@ -13,7 +13,6 @@ import logging
 from random import randint
 
 log = logging.getLogger('network_client')
-log.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
@@ -22,7 +21,7 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self):
         #socket address
-        self.network_server_address = ('localhost', 60002)
+        self.network_server_address = ('corn29.stanford.edu', 60002)
         self.client_address = '/tmp/socket_c_and_nc'
 
         #list of sockets
@@ -75,9 +74,10 @@ class Networkclient():
         return (key[0], key[1], key[2], key[3], time.time())
 
     def add_filesystem_request_to_transmit_queue(self, message, s):
+        log.debug('adding request to transmit queue')
         self.taskid += 1
         #add message to the chunk_queue
-        (keys, chunks) = split_task(self.taskid, message)
+        (keys, chunks) = self.split_task(self.taskid, message)
         #add keys to order_of_keys_in_chunk_queue
         self.order_of_keys_in_chunk_queue.extend(keys)
         #sort by priority
@@ -100,7 +100,8 @@ class Networkclient():
         if data:
             return s.recv(int(data)) #change this to handle large requests
 
-    def handle_remote_filesystem_response(self, obj, s):
+    def handle_remote_filesystem_response(self, s):
+        log.debug('Received data from network server')
         data, self.network_server_address = s.recvfrom(512)
         obj = json.loads(data)
         if obj[2] == 'ack':
@@ -134,6 +135,8 @@ class Networkclient():
         #if possible send packets
         #TODO: add a retransmission timeout
         if self.packets_in_flight < 1 and len(self.order_of_keys_in_chunk_queue)>0:
+            log.debug('send packets to remote filesystem')
+
             key = self.order_of_keys_in_chunk_queue[0]
             s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
             self.packets_in_flight += 1
@@ -157,7 +160,7 @@ class Networkclient():
             for s in readable:
                 if s is self.unix_server:
                     log.debug('Accept filesystem connection')
-                    connection, _ = unix_server.accept()
+                    connection, _ = s.accept()
                     connection.setblocking(0)
                     self.inputs.append(connection)
                 if s is not self.unix_server and s.family == socket.AF_UNIX:
@@ -182,7 +185,7 @@ class Networkclient():
                 self.inputs.remove(s)
                 if s in self.outputs:
                     self.outputs.remove(s)
-                s.close()
+                #s.close()
 
 if __name__=='__main__':
     network_client = Networkclient()

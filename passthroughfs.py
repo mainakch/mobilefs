@@ -4,6 +4,7 @@ passthrough.py - Example file system for python-llfuse
 '''
 
 import os
+import socket
 import logging
 import sys
 import json
@@ -12,6 +13,7 @@ from argparse import ArgumentParser
 import errno
 import stat
 import logging
+import pickle
 from llfuse import FUSEError
 
 log = logging.getLogger('passthrough')
@@ -49,7 +51,7 @@ class Operations(llfuse.Operations):
 
     def root_lookup(self):
         """This function updates the inode <-> path dicts with the root inode."""
-        #stat = send_command_and_receive_response(("lstat", self.root))
+        #stat = self.send_command_and_receive_response(("lstat", self.root))
         self.inode_path_map[1] = self.root
         self.path_inode_map[self.root] = 1
 
@@ -65,18 +67,22 @@ class Operations(llfuse.Operations):
 
         try:
             msg = json.dumps(command)
+            log.debug(msg)
             sock.sendall(str(len(msg)).zfill(10))
             sock.sendall(msg)
 
             length = sock.recv(10)
+            log.debug(str(length))
             data = sock.recv(int(length)) #change this to a while loop to handle large response
-            response = json.loads(data)
+            log.debug(data)
+            response = pickle.loads(data)
             if response[0] == "err":
-                raise FUSEError(errno.EREMOTEIO)
-            else:
-                return response[1]
+                raise FUSEError(response[1])
         finally:
             sock.close()
+        return response[1]
+
+        
             
     def lookup(self, inode_p, name):
         """Lookup the name file in inode_p and update inode <-> path dicts"""
@@ -85,7 +91,7 @@ class Operations(llfuse.Operations):
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
 
-        stat = send_command_and_receive_response(("lstat", path))
+        stat = self.send_command_and_receive_response(("lstat", path))
         
         if name != b'.' and name != b'..':
             self.inode_path_map[stat.st_ino] = path
@@ -99,7 +105,7 @@ class Operations(llfuse.Operations):
         log.debug('getattr %s' % repr(inode))
         path = self.inode_path_map[inode]
 
-        stat = send_command_and_receive_response(("lstat", path))
+        stat = self.send_command_and_receive_response(("lstat", path))
         # try:
         #     stat = os.lstat(path)
         # except OSError as exc:
@@ -129,7 +135,7 @@ class Operations(llfuse.Operations):
         log.debug('readlink %s' % repr(inode))
         path = self.inode_path_map[inode]
 
-        target = send_command_and_receive_response(("readlink", inode))
+        target = self.send_command_and_receive_response(("readlink", path))
         
         # try:
         #     target = os.readlink(path)
@@ -145,8 +151,8 @@ class Operations(llfuse.Operations):
     def readdir(self, inode, off):
         log.debug('readdir %s' % repr(inode))
         path = self.inode_path_map[inode]
-        #there s a better way to do this instead of query the remote each time
-        list_of_entries = send_command_and_receive_response(("listdir", path))
+        #there s a better way to do this instead of querying the remote each time
+        list_of_entries = self.send_command_and_receive_response(("listdir", path))
         log.debug('readdir %s' % repr(list_of_entries))
         log.debug('offset %d' % off)
 
@@ -163,7 +169,7 @@ class Operations(llfuse.Operations):
         name = bytes2str(name)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        send_command_and_receive_response(("unlink", path))
+        self.send_command_and_receive_response(("unlink", path))
         
         # try:
         #     os.unlink(path)
@@ -175,7 +181,7 @@ class Operations(llfuse.Operations):
         name = bytes2str(name)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        send_command_and_receive_response(("rmdir", path))
+        self.send_command_and_receive_response(("rmdir", path))
         # try:
         #     os.rmdir(path)
         # except OSError as exc:
@@ -187,14 +193,14 @@ class Operations(llfuse.Operations):
         target = bytes2str(target)
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
-        send_command_and_receive_response(("symlink", target, path))
+        self.send_command_and_receive_response(("symlink", target, path))
         
         # try:
         #     os.symlink(target, path)
         # except OSError as exc:
         #     raise FUSEError(exc.errno)
         
-        stat = send_command_and_receive_response(("lstat", path))
+        stat = self.send_command_and_receive_response(("lstat", path))
         self.path_inode_map[path] = stat.st_ino
         self.inode_path_map[stat.st_ino] = path
         
@@ -208,7 +214,7 @@ class Operations(llfuse.Operations):
         parent_new = self.inode_path_map[inode_p_new]
         path_old = os.path.join(parent_old, name_old)
         path_new = os.path.join(parent_new, name_new)
-        send_command_and_receive_response(("rename", path_old, path_new))
+        self.send_command_and_receive_response(("rename", path_old, path_new))
         
         # try:
         #     os.rename(path_old, path_new)
@@ -225,7 +231,7 @@ class Operations(llfuse.Operations):
         parent = self.inode_path_map[new_inode_p]
         path = os.path.join(parent, new_name)
 
-        send_command_and_receive_response(("link", self.inode_path_map[inode], path))
+        self.send_command_and_receive_response(("link", self.inode_path_map[inode], path))
         
         # try:
         #     os.link(self.inode_path_map[inode], path)
@@ -242,7 +248,7 @@ class Operations(llfuse.Operations):
         log.debug(repr((attr.st_mode, self.inode_path_map[inode])))
 
         if attr.st_mode is not None:
-            send_command_and_receive_response(("chmod", self.inode_path_map[inode], attr.st_mode))
+            self.send_command_and_receive_response(("chmod", self.inode_path_map[inode], attr.st_mode))
         # try:
         #     if attr.st_mode is not None:
         #         os.chmod(self.inode_path_map[inode], attr.st_mode)
@@ -256,7 +262,7 @@ class Operations(llfuse.Operations):
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
 
-        send_command_and_receive_response(("mknod", path, mode, rdev))
+        self.send_command_and_receive_response(("mknod", path, mode, rdev))
         #os.mknod(path, mode, rdev)
         return self.lookup(inode_p, name)
 
@@ -266,14 +272,14 @@ class Operations(llfuse.Operations):
         parent = self.inode_path_map[inode_p]
         path = os.path.join(parent, name)
 
-        send_command_and_receive_response(("mkdir", path, mode))
+        self.send_command_and_receive_response(("mkdir", path, mode))
         #os.mkdir(path, mode)
         return self.lookup(inode_p, name)
 
     def statfs(self):
         log.debug('statfs')
         stat_ = llfuse.StatvfsData()
-        stv = send_command_and_receive_response(("statvfs", self.root))
+        stv = self.send_command_and_receive_response(("statvfs", self.root))
         #stv = os.statvfs(self.root)
 
         stat_.f_bsize = stv.f_bsize
@@ -293,7 +299,7 @@ class Operations(llfuse.Operations):
         # Yeah, unused arguments
         #pylint: disable=W0613
         #self.inode_open_count[inode] += 1
-        return send_command_and_receive_response(("open", self.inode_path_map[inode], flags))
+        return self.send_command_and_receive_response(("open", self.inode_path_map[inode], flags))
         #return os.open(self.inode_path_map[inode], flags)
         
     def access(self, inode, mode, ctx):
@@ -306,20 +312,20 @@ class Operations(llfuse.Operations):
     def read(self, fh, offset, length):
         log.debug('read')
 
-        return send_command_and_receive_response(("lseekread", fh, offset, length))
+        return self.send_command_and_receive_response(("lseekread", fh, offset, length))
         #os.lseek(fh, offset, 0)
         #return os.read(fh, length)
                 
     def write(self, fh, offset, buf):
         print 'write %s' % buf
 
-        return send_command_and_receive_response(("lseekwrite", fh, offset, buf))
+        return self.send_command_and_receive_response(("lseekwrite", fh, offset, buf))
         os.lseek(fh, offset, 0)
         return os.write(fh, buf)
    
     def release(self, fh):
         log.debug('release')
-        send_command_and_receive_response(("close", fh))
+        self.send_command_and_receive_response(("close", fh))
         #os.close(fh)
         #raise FUSEError(errno.ENOSYS)
         #self.inode_open_count[fh] -= 1

@@ -10,6 +10,7 @@ import sys
 import select
 import time
 import logging
+import pickle
 
 log = logging.getLogger('network_server')
 log.setLevel(logging.DEBUG)
@@ -21,7 +22,7 @@ log.addHandler(ch)
 class Networkserver():
     def __init__(self):
         #socket address
-        self.public_address = ("localhost", 60002)
+        self.public_address = ("corn29.stanford.edu", 60002)
 
         #list of sockets
         self.network_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -57,6 +58,7 @@ class Networkserver():
         self.packets_in_flight = 0
 
     def execute_message(self, taskstring):
+        log.debug('inside execute_message: %s' % taskstring)
         args = json.loads(taskstring)
         response = None
         try:
@@ -64,7 +66,7 @@ class Networkserver():
                 os.chmod(args[1], args[2])
 
             if args[0] == 'close':
-                os.close(fh)
+                os.close(args[1])
 
             if args[0] == 'link':
                 os.link(args[1], args[2])
@@ -90,7 +92,7 @@ class Networkserver():
                 os.mknod(args[1], args[2], args[3])
 
             if args[0] == 'open':
-                os.open(args[1], args[2])
+                response = os.open(args[1], args[2])
 
             if args[0] == 'readlink':
                 response = os.readlink(args[1])
@@ -114,13 +116,14 @@ class Networkserver():
             response = exc
 
         if response is None:
-            return json.dumps(('non', response))
+            return pickle.dumps(('non', response))
         if isinstance(response, Exception):
-            return json.dumps(('err', response.errno))
+            return pickle.dumps(('err', response.errno))
         else:
-            return json.dumps(('res', response))
+            return pickle.dumps(('res', response))
 
     def handle_remote_request(self, s):
+        log.debug('Received request from network_client')
         try:
             #s is a network client connection
             data, self.network_client_address = s.recvfrom(512)
@@ -128,13 +131,13 @@ class Networkserver():
             if obj[2] == 'ack':
                 log.debug('ack %s' % repr(obj))
                 #find out key info
-                candidate_list = [ctr for ctr in order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
+                candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
                 #remove from chunk_queue
                 key = candidate_list[0]
                 self.order_of_keys_in_chunk_queue.remove(key)
                 del self.chunk_queue[key]
                 self.packets_in_flight -= 1
-            if obj[2] == 'pac' and obj[0][0] not in completed_tasks:
+            if obj[2] == 'pac' and obj[0][0] not in self.completed_tasks:
                 log.debug('pac %s' % repr(obj))
                 #add to receive chunk queue queue
                 key = self.augment_timestamp_info_key(obj[0])
@@ -142,10 +145,10 @@ class Networkserver():
                 #add packet to receive chunk
                 self.receive_chunk_queue[key] = val
                 #send ack
-                s.sendto(json.dumps([0, obj[0], 'ack']), network_client_address)
+                s.sendto(json.dumps([0, obj[0], 'ack']), self.network_client_address)
                 #check if all packets have been received for the same taskid
                 #there's a more efficient way to do this
-                list_of_recv_chunks = [ctr for ctr in receive_chunk_queue.keys() if ctr[0] == key[0]]
+                list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[0] == key[0]]
                 if len(list_of_recv_chunks) == key[3]:
                     list_of_recv_chunks.sort(key = lambda x: x[2])
                     #all chunks have been received
@@ -155,12 +158,13 @@ class Networkserver():
                     self.completed_tasks[key[0]] = time.time()
 
                     #execute action
-                    string_response = execute_message(self.receive_queue.pop(key[0]))
+                    string_response = self.execute_message(self.receive_queue.pop(key[0]))
+                    log.debug(string_response)
 
                     #now send response
-                    taskid += 1
+                    self.taskid += 1
                     #add message to the chunk_queue
-                    (keys, chunks) = split_task(taskid, key[0], string_response)
+                    (keys, chunks) = self.split_task(self.taskid, key[0], string_response)
                     #add keys to order_of_keys_in_chunk_queue
                     self.order_of_keys_in_chunk_queue.extend(keys)
                     #sort by priority
@@ -168,11 +172,13 @@ class Networkserver():
                     #add entries to chunk_queue
                     for (key, val) in zip(keys, chunks):
                         self.chunk_queue[key] = val
-        except:
-            pass                    
+        except Exception as exc:
+            log.debug(repr(exc))
 
     def send_remote_response(self, s):
         if self.packets_in_flight < 1 and len(self.order_of_keys_in_chunk_queue)>0:
+            log.debug(repr(self.chunk_queue))
+            log.debug('Send response')
             #send the topmost priority packet if number of packets in flight is <1
             #introduce some packet timeout mechanisms
             key = self.order_of_keys_in_chunk_queue[0]
