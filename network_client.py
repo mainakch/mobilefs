@@ -2,7 +2,9 @@
 '''
 network_client.py - Sends remote requests, receives response and returns response
 '''
-#TODO: add error checking
+#TODO: add network error checking
+#TODO: add user control
+
 import socket
 import json
 import sys
@@ -21,7 +23,13 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self):
         #socket address
-        self.network_server_address = ('corn29.stanford.edu', 60002)
+        self.retransmission_timeout = 1000 #milliseconds
+        self.lastsent = 0 #timestamp of last sent packet
+        self.lastreceived = 0 #timestamp of last received packet
+
+        self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
+        
+        self.network_server_address = ('corn30.stanford.edu', 60002)
         self.client_address = '/tmp/socket_c_and_nc'
 
         #list of sockets
@@ -104,20 +112,24 @@ class Networkclient():
         log.debug('Received data from network server')
         data, self.network_server_address = s.recvfrom(512)
         obj = json.loads(data)
+        self.lastreceived = time.time()
+        
         if obj[2] == 'ack':
             #find out key info
             candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
             #remove from chunk_queue
             key = candidate_list[0]
+            if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
             self.order_of_keys_in_chunk_queue.remove(key)
             del self.chunk_queue[key]
-            self.packets_in_flight -= 1
+
         if obj[2] == 'pac' and obj[0][1] not in self.completed_tasks:
             #add to receive chunk queue queue
             key = self.augment_timestamp_info_key(obj[0])
             val = obj[1]
             #add packet to receive chunk
             self.receive_chunk_queue[key] = val
+
             #send ack
             s.sendto(json.dumps([0, obj[0], 'ack']), self.network_server_address)
             #check if all packets have been received for the same original_task_id
@@ -133,13 +145,20 @@ class Networkclient():
 
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
-        #TODO: add a retransmission timeout
-        if self.packets_in_flight < 1 and len(self.order_of_keys_in_chunk_queue)>0:
-            log.debug('send packets to remote filesystem')
+        if len(self.order_of_keys_in_chunk_queue)>0:
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.timeout]
+            if len(list_of_keys_with_timeout)>0:
+                #assume packet is lost
+                for key in list_of_keys_with_timeout:
+                    if key in unacknowledged_packets: del self.unacknowledged_packets[key]
 
-            key = self.order_of_keys_in_chunk_queue[0]
-            s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
-            self.packets_in_flight += 1
+            if len(self.unacknowledged_packets.keys())<1:
+                log.debug('send packets to remote filesystem')
+                key = self.order_of_keys_in_chunk_queue[0]
+                self.unacknowledged_packets[key] = time.time()
+                self.lastsent = time.time()
+                s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
+                
 
     def send_response_to_local_filesystem(self, s):
         #TODO: add code to handle network error

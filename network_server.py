@@ -21,8 +21,14 @@ log.addHandler(ch)
 
 class Networkserver():
     def __init__(self):
+
+        self.retransmission_timeout = 1000 #milliseconds
+        self.lastsent = 0
+        self.lastreceived = 0
+        self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
+        
         #socket address
-        self.public_address = ("corn29.stanford.edu", 60002)
+        self.public_address = ("corn30.stanford.edu", 60002)
 
         #list of sockets
         self.network_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -128,15 +134,18 @@ class Networkserver():
             #s is a network client connection
             data, self.network_client_address = s.recvfrom(512)
             obj = json.loads(data)
+            self.lastreceived = time.time()
+            
             if obj[2] == 'ack':
                 log.debug('ack %s' % repr(obj))
                 #find out key info
                 candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
                 #remove from chunk_queue
                 key = candidate_list[0]
+                if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
                 self.order_of_keys_in_chunk_queue.remove(key)
                 del self.chunk_queue[key]
-                self.packets_in_flight -= 1
+
             if obj[2] == 'pac' and obj[0][0] not in self.completed_tasks:
                 log.debug('pac %s' % repr(obj))
                 #add to receive chunk queue queue
@@ -176,15 +185,19 @@ class Networkserver():
             log.debug(repr(exc))
 
     def send_remote_response(self, s):
-        if self.packets_in_flight < 1 and len(self.order_of_keys_in_chunk_queue)>0:
-            log.debug(repr(self.chunk_queue))
-            log.debug('Send response')
-            #send the topmost priority packet if number of packets in flight is <1
-            #introduce some packet timeout mechanisms
-            key = self.order_of_keys_in_chunk_queue[0]
-            s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_client_address)
-            self.packets_in_flight += 1
+        if len(self.order_of_keys_in_chunk_queue)>0:
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.timeout]
+            if len(list_of_keys_with_timeout)>0:
+                #assume packet is lost
+                for key in list_of_keys_with_timeout:
+                    if key in unacknowledged_packets: del self.unacknowledged_packets[key]
 
+            if len(self.unacknowledged_packets.keys())<1:
+                log.debug('send packets to remote filesystem')
+                key = self.order_of_keys_in_chunk_queue[0]
+                self.unacknowledged_packets[key] = time.time()
+                self.lastsent = time.time()
+                s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
 
     def split_task(self, taskid, original_taskid, taskstring):
         #this splits up the taskstring into a list of chunks
