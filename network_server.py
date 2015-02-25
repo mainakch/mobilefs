@@ -22,7 +22,7 @@ log.addHandler(ch)
 class Networkserver():
     def __init__(self):
 
-        self.retransmission_timeout = 1000 #milliseconds
+        self.retransmission_timeout = 1 #milliseconds
         self.lastsent = 0
         self.lastreceived = 0
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent

@@ -24,7 +24,8 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self):
         #socket address
-        self.retransmission_timeout = 1000 #milliseconds
+        self.retransmission_timeout = 1 #seconds
+        self.filesystem_timeout = 2 #returns an error if no response after this time in seconds
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
@@ -63,6 +64,7 @@ class Networkclient():
         #mapping from socket object to taskid
         self.sock_to_taskid = {}
         self.taskid_to_sock = {}
+        self.sock_to_timestamp = {}
         self.order_of_keys_in_chunk_queue = []
         self.taskid = randint(0, 1002039) #not randomizing can lead to same taskid in case of client failure
         self.packets_in_flight = 0
@@ -105,6 +107,7 @@ class Networkclient():
         return s
 
     def receive_filesystem_request(self, s):
+        self.sock_to_timestamp[s] = time.time()
         data = s.recv(10)
         if data:
             return s.recv(int(data)) #change this to handle large requests
@@ -130,7 +133,6 @@ class Networkclient():
             val = obj[1]
             #add packet to receive chunk
             self.receive_chunk_queue[key] = val
-
             #send ack
             s.sendto(json.dumps([0, obj[0], 'ack']), self.network_server_address)
             #check if all packets have been received for the same original_task_id
@@ -149,6 +151,7 @@ class Networkclient():
         if len(self.order_of_keys_in_chunk_queue)>0:
             list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.retransmission_timeout]
             if len(list_of_keys_with_timeout)>0:
+                log.debug('retransmission timeout event')
                 #assume packet is lost
                 for key in list_of_keys_with_timeout:
                     if key in unacknowledged_packets: del self.unacknowledged_packets[key]
@@ -163,6 +166,9 @@ class Networkclient():
 
     def send_response_to_local_filesystem(self, s):
         #TODO: add code to handle network error
+        if self.sock_to_timestamp[s] < time.time() - self.filesystem_timeout:
+            #pass
+
         if self.sock_to_taskid[s] in self.receive_queue:
             log.debug('Sending response to filesystem')
             s.sendall(str(len(self.receive_queue[self.sock_to_taskid[s]])).zfill(10))
