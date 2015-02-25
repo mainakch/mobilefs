@@ -32,6 +32,9 @@ class Entryattributes():
         self.st_atime = stat.st_atime
         self.st_mtime = stat.st_mtime
         self.st_ctime = stat.st_ctime
+        self.st_atime_ns = None
+        self.st_ctime_ns = None
+        self.st_mtime_ns = None
 
         self.generation = 0
         self.entry_timeout = 1

@@ -123,7 +123,7 @@ class Operations(llfuse.Operations):
         # except OSError as exc:
         #     raise FUSEError(exc.errno)
         
-        entry = llfuse.EntryAttributes()
+        entry = Entryattributes(stat)
         entry.st_ino = stat.st_ino
         entry.st_mode = stat.st_mode
         entry.st_nlink = stat.st_nlink
