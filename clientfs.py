@@ -3,18 +3,11 @@
 clientfs.py - Example file system for python-llfuse
 '''
 
-import os
-import socket
-import logging
-import sys
-import json
 import llfuse
 from argparse import ArgumentParser
-import errno
 import stat
-import logging
-import pickle
 from llfuse import FUSEError
+from constants import *
 
 log = logging.getLogger('passthrough')
 log.setLevel(logging.DEBUG)
@@ -118,28 +111,7 @@ class Operations(llfuse.Operations):
         path = self.inode_path_map[inode]
 
         stat = self.send_command_and_receive_response(("lstat", path))
-        # try:
-        #     stat = os.lstat(path)
-        # except OSError as exc:
-        #     raise FUSEError(exc.errno)
-        
         entry = Entryattributes(stat)
-        entry.st_ino = stat.st_ino
-        entry.st_mode = stat.st_mode
-        entry.st_nlink = stat.st_nlink
-        entry.st_uid = stat.st_uid
-        entry.st_gid = stat.st_gid
-        entry.st_rdev = stat.st_dev
-        entry.st_size = stat.st_size
-        entry.st_atime = stat.st_atime
-        entry.st_mtime = stat.st_mtime
-        entry.st_ctime = stat.st_ctime
-        
-        entry.generation = 0
-        entry.entry_timeout = 1
-        entry.attr_timeout = 1
-        entry.st_blksize = stat.st_blksize
-        entry.st_blocks = stat.st_blocks
         
         return entry
 
