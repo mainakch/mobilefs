@@ -186,7 +186,7 @@ class Networkserver():
 
     def send_remote_response(self, s):
         if len(self.order_of_keys_in_chunk_queue)>0:
-            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.timeout]
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-self.retransmission_timeout]
             if len(list_of_keys_with_timeout)>0:
                 #assume packet is lost
                 for key in list_of_keys_with_timeout:
