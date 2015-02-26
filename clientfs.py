@@ -47,17 +47,6 @@ class Operations(llfuse.Operations):
         """This function updates the inode <-> path dicts with the root inode."""
         self.inode_path_map[1] = self.root
         self.path_inode_map[self.root] = 1
-
-    def recvall(self, sock, count):
-        """This receives count bytes from the sock stream"""
-        buf = b''
-        while count:
-            newbuf = sock.recv(count)
-            if not newbuf: return None
-            buf += newbuf
-            count -= len(newbuf)
-        return buf
-
     def send_command_and_receive_response(self, command):
         """This function sends command to the network and returns response. If response
         is an error it raises an error. command is a tuple the first element of which
@@ -71,12 +60,14 @@ class Operations(llfuse.Operations):
         try:
             msg = json.dumps(command)
             log.debug(msg)
-            sock.sendall(str(len(msg)).zfill(10))
-            sock.sendall(msg)
+            #sock.sendall(str(len(msg)).zfill(10))
+            #sock.sendall(msg)
+            sendmsg(sock, str(len(msg)).zfill(10))
+            sendmsg(sock, msg)
 
-            length = sock.recv(10)
+            length = recvall(sock, 10)
             log.debug(str(length))
-            data = self.recvall(sock, int(length)) #change this to a while loop to handle large response
+            data = recvall(sock, int(length)) 
             response = pickle.loads(data)
             log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
