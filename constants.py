@@ -15,6 +15,7 @@ import errno
 
 from random import randint
 
+SOCK_CHUNK_SIZE = 1024
 CHUNK_SIZE = 100
 DATAGRAM_SIZE = 512
 RETRANSMISSION_TIMEOUT = 4 #seconds
@@ -40,3 +41,27 @@ class Entryattributes():
         self.attr_timeout = 1
         self.st_blksize = stat.st_blksize
         self.st_blocks = stat.st_blocks
+
+"""
+Miscellaneous functions
+"""
+def recvall(sock, count):
+    """This receives count bytes from the sock stream"""
+    print 'Inside recvall'
+    buf = b''
+    while count:
+        newbuf = sock.recv(count)
+        if not newbuf: return None
+        buf += newbuf
+        count -= len(newbuf)
+    return buf
+
+def sendmsg(sock, msg):
+    """This sends a potentially large msg"""
+    current_ptr = 0
+    while current_ptr + SOCK_CHUNK_SIZE < len(msg):
+        sock.sendall(msg[current_ptr: current_ptr + SOCK_CHUNK_SIZE])
+        current_ptr += SOCK_CHUNK_SIZE
+
+    if current_ptr >= len(msg):
+        sock.send(msg[current_ptr:-1])

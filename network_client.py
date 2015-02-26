@@ -98,6 +98,7 @@ class Networkclient():
         return s
 
     def receive_filesystem_request(self, s):
+        log.debug('receive filesystem req')
         self.sock_to_timestamp[s] = time.time()
         data = recvall(s, 10)
         if data:
@@ -170,10 +171,10 @@ class Networkclient():
                 msg = self.receive_queue.pop(key)
                 
                 log.debug('Sending response of length %d to filesystem' % len(msg))
-                #s.sendall(str(len(msg)).zfill(10))
-                #s.sendall(msg)
-                sendmsg(s, str(len(msg)).zfill(10))
-                sendmsg(s, msg)
+                s.sendall(str(len(msg)).zfill(10))
+                s.sendall(msg)
+                #sendmsg(s, str(len(msg)).zfill(10))
+                #sendmsg(s, msg)
 
                 #cleanup
                 del self.taskid_to_sock[key]
@@ -191,10 +192,11 @@ class Networkclient():
             readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
             for s in readable:
                 if s is self.unix_server:
-                    log.debug('Accept filesystem connection')
+                    log.debug('Accepting filesystem connection')
                     connection, _ = s.accept()
-                    connection.setblocking(1)
+                    connection.setblocking(0)
                     self.inputs.append(connection)
+                    log.debug('Accepted filesystem connection')
                     log.debug('number of connections %d' % len(self.inputs))
                 if s is not self.unix_server and s.family == socket.AF_UNIX:
                     log.debug('Listen to filesystem connection')

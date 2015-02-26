@@ -60,14 +60,15 @@ class Operations(llfuse.Operations):
         try:
             msg = json.dumps(command)
             log.debug(msg)
-            #sock.sendall(str(len(msg)).zfill(10))
-            #sock.sendall(msg)
-            sendmsg(sock, str(len(msg)).zfill(10))
-            sendmsg(sock, msg)
+            sock.sendall(str(len(msg)).zfill(10))
+            sock.sendall(msg)
+            #sendmsg(sock, str(len(msg)).zfill(10))
+            #sendmsg(sock, msg)
 
             length = recvall(sock, 10)
-            log.debug(str(length))
-            data = recvall(sock, int(length)) 
+            #length = sock.recv(10)
+            #log.debug(str(length))
+            data = sock.recvall(int(length)) 
             response = pickle.loads(data)
             log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
