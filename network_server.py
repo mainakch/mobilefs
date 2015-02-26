@@ -14,6 +14,7 @@ log.addHandler(ch)
 class Networkserver():
     def __init__(self, server_address, port):
 
+        self.window = 10
         self.lastsent = 0
         self.lastreceived = 0
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
@@ -189,12 +190,22 @@ class Networkserver():
                 for key in list_of_keys_with_timeout:
                     if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
 
-            if len(self.unacknowledged_packets.keys())<1:
+            if len(self.unacknowledged_packets.keys())<self.window:
                 log.debug('send packets to remote filesystem')
-                key = self.order_of_keys_in_chunk_queue[0]
-                self.unacknowledged_packets[key] = time.time()
-                self.lastsent = time.time()
-                s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_client_address)
+
+                numkeys = max(self.window - len(self.unacknowledged_packets.keys()), 0)
+                #find out keys which are not in transit
+                keys = []
+                ctr = 0
+                while len(keys)<numkeys and ctr < len(self.order_of_keys_in_chunk_queue):
+                    if self.order_of_keys_in_chunk_queue[ctr] not in self.unacknowledged_packets:
+                        keys.append(self.order_of_keys_in_chunk_queue[ctr])
+                    ctr += 1
+                    
+                for key in keys:
+                    self.unacknowledged_packets[key] = time.time()
+                    self.lastsent = time.time()
+                    s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_client_address)
 
     def split_task(self, taskid, original_taskid, taskstring):
         #this splits up the taskstring into a list of chunks
