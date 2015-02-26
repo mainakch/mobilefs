@@ -16,10 +16,10 @@ import errno
 from random import randint
 
 SOCK_CHUNK_SIZE = 1024
-CHUNK_SIZE = 100
+CHUNK_SIZE = 300
 DATAGRAM_SIZE = 512
-RETRANSMISSION_TIMEOUT = 4 #seconds
-FILESYSTEM_TIMEOUT = 8
+RETRANSMISSION_TIMEOUT = 1 #seconds
+FILESYSTEM_TIMEOUT = 10
 
 class Entryattributes():
     def __init__(self, stat):
