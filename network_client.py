@@ -191,7 +191,7 @@ class Networkclient():
                 if s is self.unix_server:
                     log.debug('Accept filesystem connection')
                     connection, _ = s.accept()
-                    connection.setblocking(0)
+                    connection.setblocking(1)
                     self.inputs.append(connection)
                     log.debug('number of connections %d' % len(self.inputs))
                 if s is not self.unix_server and s.family == socket.AF_UNIX:
