@@ -2,7 +2,7 @@
 '''
 network_client.py - Sends remote requests, receives response and returns response
 '''
-#TODO: add network error checking
+#TODO: add automatic timeout
 #TODO: add user control
 
 from constants import *
@@ -16,7 +16,8 @@ log.addHandler(ch)
 
 class Networkclient():
     def __init__(self, server_address, port):
-        #socket address
+
+        self.window = 1 #number of packets in flight
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
@@ -58,7 +59,6 @@ class Networkclient():
         self.sock_to_timestamp = {}
         self.order_of_keys_in_chunk_queue = []
         self.taskid = randint(0, 1002039) #not randomizing can lead to same taskid in case of client failure
-        self.packets_in_flight = 0
 
     def split_task(self, taskid, taskstring):
         #this splits up the taskstring into a list of chunks
@@ -148,12 +148,21 @@ class Networkclient():
                 for key in list_of_keys_with_timeout:
                     if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
 
-            if len(self.unacknowledged_packets.keys())<1:
+            if len(self.unacknowledged_packets.keys())<self.window:
                 log.debug('send packets to remote filesystem')
-                key = self.order_of_keys_in_chunk_queue[0]
-                self.unacknowledged_packets[key] = time.time()
-                self.lastsent = time.time()
-                s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
+                numkeys = max(self.window - len(self.unacknowledged_packets.keys()), 0)
+                #find out keys which are not in transit
+                keys = []
+                ctr = 0
+                while len(keys)<numkeys and ctr < len(self.order_of_keys_in_chunk_queue):
+                    if self.order_of_keys_in_chunk_queue[ctr] not in self.unacknowledged_packets:
+                        keys.append(self.order_of_keys_in_chunk_queue[ctr])
+                    ctr += 1
+
+                for key in keys:
+                    self.unacknowledged_packets[key] = time.time()
+                    self.lastsent = time.time()
+                    s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
                 
 
     def send_response_to_local_filesystem(self, s):
