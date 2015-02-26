@@ -68,7 +68,7 @@ class Operations(llfuse.Operations):
             length = recvall(sock, 10)
             #length = sock.recv(10)
             #log.debug(str(length))
-            data = sock.recvall(int(length)) 
+            data = recvall(sock, int(length)) 
             response = pickle.loads(data)
             log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
