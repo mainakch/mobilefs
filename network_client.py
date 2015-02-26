@@ -17,7 +17,7 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self, server_address, port):
 
-        self.window = 1 #number of packets in flight
+        self.window = 10 #number of packets in flight
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
@@ -203,7 +203,7 @@ class Networkclient():
                 if s is self.unix_server:
                     log.debug('Accepting filesystem connection')
                     connection, _ = s.accept()
-                    connection.setblocking(0)
+                    connection.setblocking(1)
                     self.inputs.append(connection)
                     log.debug('Accepted filesystem connection')
                     log.debug('number of connections %d' % len(self.inputs))
