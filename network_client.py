@@ -102,7 +102,9 @@ class Networkclient():
         self.sock_to_timestamp[s] = time.time()
         data = recvall(s, 10)
         if data:
-            return recvall(s, int(data)) #change this to handle large requests
+            msg = recvall(s, int(data))
+            s.shutdown(SHUT_RD)
+            return msg
 
     def handle_remote_filesystem_response(self, s):
         log.debug('Received data from network server')
@@ -182,6 +184,7 @@ class Networkclient():
                 log.debug('Sending response of length %d to filesystem' % len(msg))
                 s.sendall(str(len(msg)).zfill(10))
                 s.sendall(msg)
+                s.shutdown(SHUT_WR)
                 #sendmsg(s, str(len(msg)).zfill(10))
                 #sendmsg(s, msg)
 
@@ -189,7 +192,9 @@ class Networkclient():
                 del self.taskid_to_sock[key]
                 self.outputs.remove(s)
                 #close this after writing is done
-                #s.close() 
+                #s.close()
+        finally:
+            s.close()
 
         except Exception as exc:
             log.debug(repr(exc))

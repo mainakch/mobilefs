@@ -62,13 +62,15 @@ class Operations(llfuse.Operations):
             log.debug(msg)
             sock.sendall(str(len(msg)).zfill(10))
             sock.sendall(msg)
+            sock.shutdown(SHUT_WR)
             #sendmsg(sock, str(len(msg)).zfill(10))
             #sendmsg(sock, msg)
 
             length = recvall(sock, 10)
             #length = sock.recv(10)
             #log.debug(str(length))
-            data = recvall(sock, int(length)) 
+            data = recvall(sock, int(length))
+            sock.shutdown(SHUT_RD)
             response = pickle.loads(data)
             log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
