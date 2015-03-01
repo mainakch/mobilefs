@@ -56,13 +56,13 @@ class Operations(llfuse.Operations):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         server_address = self.server_address
         sock.connect(server_address)
+        sock.setblocking(1)
 
         try:
             msg = json.dumps(command)
             log.debug(msg)
             sock.sendall(str(len(msg)).zfill(10))
             sock.sendall(msg)
-            sock.shutdown(SHUT_WR)
             #sendmsg(sock, str(len(msg)).zfill(10))
             #sendmsg(sock, msg)
 
@@ -70,7 +70,6 @@ class Operations(llfuse.Operations):
             #length = sock.recv(10)
             #log.debug(str(length))
             data = recvall(sock, int(length))
-            sock.shutdown(SHUT_RD)
             response = pickle.loads(data)
             log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
@@ -79,6 +78,7 @@ class Operations(llfuse.Operations):
 
         finally:
             sock.close()
+            pass
         return response[1]
 
         
@@ -126,11 +126,11 @@ class Operations(llfuse.Operations):
         log.debug('opendir %s' % repr(inode))
         return inode
 
-    def readdir(self, inode, offset):
+    def readdir(self, inode, offset=0):
         log.debug('readdir %s' % repr(inode))
         path = self.inode_path_map[inode]
-
-        if offset == 0:
+               
+        if offset == 0 and path not in self.listdir_buffer:
             self.listdir_buffer[path] = self.send_command_and_receive_response(("listdir", path))
             
         #log.debug('readdir %s' % repr(list_of_entries))
@@ -139,16 +139,22 @@ class Operations(llfuse.Operations):
         try:
             name = self.listdir_buffer[path][offset]
         except:
-            if path in self.listdir_buffer: del self.listdir_buffer[path]
+            #if path in self.listdir_buffer: del self.listdir_buffer[path]
             return []
 
         final_response = []
         ctr = 0
         for entry in self.listdir_buffer[path]:
-            final_response.append((str2bytes(entry[0]), entry[1], ctr+1))
-            self.inode_path_map[entry[1].st_ino] = path
-            self.path_inode_map[path] = entry[1].st_ino
+            nextctr = ctr+1
+            if nextctr == len(self.listdir_buffer[path]):
+                final_response.append((str2bytes(entry[0]), entry[1], nextctr))
+            else:
+                final_response.append((str2bytes(entry[0]), entry[1], nextctr))
+            self.inode_path_map[entry[1].st_ino] = os.path.join(path, entry[0])
+            self.path_inode_map[os.path.join(path, entry[0])] = entry[1].st_ino
             ctr += 1
+
+
             
         return final_response
     

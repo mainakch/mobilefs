@@ -103,7 +103,6 @@ class Networkclient():
         data = recvall(s, 10)
         if data:
             msg = recvall(s, int(data))
-            s.shutdown(SHUT_RD)
             return msg
 
     def handle_remote_filesystem_response(self, s):
@@ -123,6 +122,8 @@ class Networkclient():
 
         if obj[2] == 'pac' and obj[0][1] not in self.completed_tasks:
             #add to receive chunk queue queue
+            log.debug('Received packet %s ' % repr(obj[0]))
+            
             key = self.augment_timestamp_info_key(obj[0])
             val = obj[1]
             #add packet to receive chunk
@@ -169,13 +170,14 @@ class Networkclient():
 
     def send_response_to_local_filesystem(self, s):
         #TODO: add code to handle network error
+        status = 1 #not completed
         try:
             if self.sock_to_timestamp[s] < time.time() - FILESYSTEM_TIMEOUT:
                 #pass
                 pass
 
             if s not in self.sock_to_taskid:
-                return
+                return status
 
             if self.sock_to_taskid[s] in self.receive_queue:
                 key = self.sock_to_taskid.pop(s)
@@ -184,57 +186,67 @@ class Networkclient():
                 log.debug('Sending response of length %d to filesystem' % len(msg))
                 s.sendall(str(len(msg)).zfill(10))
                 s.sendall(msg)
-                s.shutdown(SHUT_WR)
                 #sendmsg(s, str(len(msg)).zfill(10))
                 #sendmsg(s, msg)
 
                 #cleanup
                 del self.taskid_to_sock[key]
                 self.outputs.remove(s)
+                status = 0
                 #close this after writing is done
                 #s.close()
-        finally:
-            s.close()
-
         except Exception as exc:
             log.debug(repr(exc))
+        finally:
+            #s.close()
+            pass
+        return status
+
             
 
 
     def main_loop(self):
         while self.inputs:
-            readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
-            for s in readable:
-                if s is self.unix_server:
-                    log.debug('Accepting filesystem connection')
-                    connection, _ = s.accept()
-                    connection.setblocking(1)
-                    self.inputs.append(connection)
-                    log.debug('Accepted filesystem connection')
-                    log.debug('number of connections %d' % len(self.inputs))
-                if s is not self.unix_server and s.family == socket.AF_UNIX:
-                    log.debug('Listen to filesystem connection')
-                    #s is a client connection from a local process
-                    #read length of tcp message
-                    message = self.receive_filesystem_request(s)
-                    self.add_filesystem_request_to_transmit_queue(message, s)
-                if s.family == socket.AF_INET:
-                    log.debug('Receiving information from remote filesystem')
-                    #s is a network client
-                    self.handle_remote_filesystem_response(s)
+            try:
+                readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
 
-            for s in writable:
-                if s is self.network_server:
-                    self.send_packets_to_remote_filesystem(s)
+                for s in readable:
+                    if s is self.unix_server:
+                        log.debug('Accepting filesystem connection')
+                        connection, _ = s.accept()
+                        connection.setblocking(1)
+                        self.inputs.append(connection)
+                        log.debug('Accepted filesystem connection')
+                        log.debug('number of connections %d' % len(self.inputs))
+                    if s is not self.unix_server and s.family == socket.AF_UNIX:
+                        log.debug('Listen to filesystem connection')
+                        #s is a client connection from a local process
+                        #read length of tcp message
+                        message = self.receive_filesystem_request(s)
+                        self.add_filesystem_request_to_transmit_queue(message, s)
+                    if s.family == socket.AF_INET:
+                        log.debug('Receiving information from remote filesystem')
+                        #s is a network client
+                        self.handle_remote_filesystem_response(s)
 
-                if s is not self.unix_server and s.family == socket.AF_UNIX:
-                    self.send_response_to_local_filesystem(s)
+                for s in writable:
+                    if s is self.network_server:
+                        self.send_packets_to_remote_filesystem(s)
 
-            for s in exceptional:
-                self.inputs.remove(s)
-                if s in self.outputs:
-                    self.outputs.remove(s)
+                    if s is not self.unix_server and s.family == socket.AF_UNIX:
+                        if self.send_response_to_local_filesystem(s)==0:
+                            #close socket if response successfully written
+                            s.close()
+
+                for s in exceptional:
+                    self.inputs.remove(s)
+                    if s in self.outputs:
+                        self.outputs.remove(s)
                 #s.close()
+            except Exception as exc:
+                log.debug(self.inputs)
+                log.debug(exc)
+                log.debug('Error')
 
 if __name__=='__main__':
     if len(sys.argv)<3:
