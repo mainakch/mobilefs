@@ -17,14 +17,14 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self, server_address, port):
 
-        self.window = 30 #number of packets in flight
+        self.window = WINDOW #number of packets in flight
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
         self.network_server_address = (server_address, port)
-        self.client_address = '/tmp/socket_c_and_nc'
+        self.client_address = LOCAL_UNIX_SOCKET
 
         #list of sockets
         self.unix_server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -255,7 +255,7 @@ if __name__=='__main__':
         sys.exit(1)
     
     try:
-        os.remove('/tmp/socket_c_and_nc')
+        os.remove(LOCAL_UNIX_SOCKET)
     except OSError:
         pass
     network_client = Networkclient(sys.argv[1], int(sys.argv[2]))

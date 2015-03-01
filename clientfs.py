@@ -33,7 +33,7 @@ class Operations(llfuse.Operations):
         self.inode_path_map = dict() #these are maintained at the client 
         self.path_inode_map = dict() 
         self.root_lookup()
-        self.server_address = '/tmp/socket_c_and_nc'
+        self.server_address = LOCAL_UNIX_SOCKET
         self.listdir_buffer = {}
                     
     def _full_path(self, partial):
