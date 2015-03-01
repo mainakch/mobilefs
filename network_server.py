@@ -144,13 +144,14 @@ class Networkserver():
                 self.order_of_keys_in_chunk_queue.remove(key)
                 del self.chunk_queue[key]
 
-            if obj[2] == 'pac' and obj[0][0] not in self.completed_tasks:
+            if obj[2] == 'pac':# and obj[0][0] not in self.completed_tasks:
                 log.debug('pac')
                 #add to receive chunk queue queue
                 key = self.augment_timestamp_info_key(obj[0])
                 val = obj[1]
-                #add packet to receive chunk
-                self.receive_chunk_queue[key] = val
+                #add packet to receive chunk if not in self.completed_tasks
+                if obj[0][1] not in self.completed_tasks:
+                    self.receive_chunk_queue[key] = val
                 #send ack
                 s.sendto(json.dumps([0, obj[0], 'ack']), self.network_client_address)
                 #check if all packets have been received for the same taskid
