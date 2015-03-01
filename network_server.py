@@ -14,7 +14,7 @@ log.addHandler(ch)
 class Networkserver():
     def __init__(self, server_address, port):
 
-        self.window = 10
+        self.window = 30
         self.lastsent = 0
         self.lastreceived = 0
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent

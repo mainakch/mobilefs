@@ -17,7 +17,7 @@ log.addHandler(ch)
 class Networkclient():
     def __init__(self, server_address, port):
 
-        self.window = 10 #number of packets in flight
+        self.window = 30 #number of packets in flight
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
 
