@@ -17,6 +17,8 @@ from random import randint
 
 SOCK_CHUNK_SIZE = 1024
 CHUNK_SIZE = 300
+WINDOW = 10
+LOCAL_UNIX_SOCKET = '/tmp/socket_c_and_nc'
 DATAGRAM_SIZE = 512
 RETRANSMISSION_TIMEOUT = 1 #seconds
 FILESYSTEM_TIMEOUT = 10
