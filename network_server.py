@@ -5,7 +5,7 @@ network_server.py - Executes remote requests and send responses back
 from constants import *
 
 log = logging.getLogger('network_server')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
