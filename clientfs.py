@@ -9,10 +9,10 @@ import stat
 from llfuse import FUSEError
 from constants import *
 
-log = logging.getLogger('passthrough')
-log.setLevel(logging.DEBUG)
+log = logging.getLogger('clientfs')
+log.setLevel(logging.INFO)
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 log.addHandler(ch)
 
@@ -61,7 +61,6 @@ class Operations(llfuse.Operations):
 
         try:
             msg = json.dumps(command)
-            log.debug(msg)
             sock.sendall(str(len(msg)).zfill(10))
             sock.sendall(msg)
             #sendmsg(sock, str(len(msg)).zfill(10))
@@ -72,7 +71,7 @@ class Operations(llfuse.Operations):
             #log.debug(str(length))
             data = recvall(sock, int(length))
             response = pickle.loads(data)
-            log.debug(len(pickle.dumps(response)))
+            #log.debug(len(pickle.dumps(response)))
             if response[0] == "err":
                 raise FUSEError(response[1])
             #raise FUSEError(errno.EMSGSIZE)
@@ -315,7 +314,7 @@ class Operations(llfuse.Operations):
         #return os.read(fh, length)
                 
     def write(self, fh, offset, buf):
-        print 'write %s' % buf
+        log.debug('write %s' % buf)
 
         return self.send_command_and_receive_response(("lseekwrite", fh, offset, buf))
         os.lseek(fh, offset, 0)

@@ -8,9 +8,9 @@ network_client.py - Sends remote requests, receives response and returns respons
 from constants import *
 
 log = logging.getLogger('network_client')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 log.addHandler(ch)
 
@@ -278,7 +278,7 @@ class Networkclient():
                         self.send_packets_to_remote_filesystem(s)
 
                     if s is not self.unix_server and s.family == socket.AF_UNIX:
-                        log.debug('Inside output queue')
+                        #log.debug('Inside output queue')
                         if self.send_response_to_local_filesystem(s)==0:
                             #close socket if response successfully written
                             s.close()
