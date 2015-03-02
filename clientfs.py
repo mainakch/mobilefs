@@ -132,6 +132,7 @@ class Operations(llfuse.Operations):
         path = self.inode_path_map[inode]
                
         if offset == 0 and ((path not in self.listdir_buffer) or (self.listdir_last_access[path] + LISTDIR_TIMEOUT<time.time())):
+            #if offset == 0 and path not in self.listdir_buffer:
             self.listdir_buffer[path] = self.send_command_and_receive_response(("listdir", path))
             self.listdir_last_access[path] = time.time()
             
@@ -140,7 +141,7 @@ class Operations(llfuse.Operations):
         log.debug('readdir offset %d' % offset)
 
         try:
-            name = self.listdir_buffer[path][offset:]
+            name = self.listdir_buffer[path][offset]
         except:
             #if path in self.listdir_buffer: del self.listdir_buffer[path]
             return []

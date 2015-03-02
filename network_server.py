@@ -192,8 +192,7 @@ class Networkserver():
                     if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
 
             if len(self.unacknowledged_packets.keys())<self.window:
-                log.debug('send packets to remote filesystem')
-
+                #log.debug('send packets to remote filesystem')
                 numkeys = max(self.window - len(self.unacknowledged_packets.keys()), 0)
                 #find out keys which are not in transit
                 keys = []
