@@ -5,9 +5,9 @@ network_server.py - Executes remote requests and send responses back
 from constants import *
 
 log = logging.getLogger('network_server')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.DEBUG)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 log.addHandler(ch)
         
@@ -53,7 +53,7 @@ class Networkserver():
 
         #mapping from socket object to taskid
         self.order_of_keys_in_chunk_queue = []
-        self.taskid = 0
+        self.taskid = randint(0, 1002039)
         self.packets_in_flight = 0
 
     def execute_message(self, taskstring):

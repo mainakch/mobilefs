@@ -51,7 +51,7 @@ Miscellaneous functions
 """
 def recvall(sock, count):
     """This receives count bytes from the sock stream"""
-    print 'Inside recvall'
+    #print 'Inside recvall'
     buf = b''
     while count:
         newbuf = sock.recv(count)
