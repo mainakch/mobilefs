@@ -30,6 +30,7 @@ class Networkserver():
             self.network_server.bind(self.public_address)
             
         except Exception as ex:
+            #pass
             log.debug(ex)
     
         self.inputs = [self.network_server]
@@ -127,7 +128,7 @@ class Networkserver():
             return pickle.dumps(('res', response))
 
     def handle_remote_request(self, s):
-        log.debug('Received request from network_client')
+        #log.debug('Received request from network_client')
         try:
             #s is a network client connection
             data, self.network_client_address = s.recvfrom(DATAGRAM_SIZE)
@@ -167,7 +168,7 @@ class Networkserver():
 
                     #execute action
                     string_response = self.execute_message(self.receive_queue.pop(key[0]))
-                    log.debug(string_response)
+                    #log.debug(string_response)
 
                     #now send response
                     self.taskid += 1
