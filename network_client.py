@@ -146,7 +146,7 @@ class Networkclient():
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
         if len(self.order_of_keys_in_chunk_queue)>0:
-            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if bself.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
             if len(list_of_keys_with_timeout)>0:
                 log.debug('retransmission timeout event')
                 #assume packet is lost
