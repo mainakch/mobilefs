@@ -31,7 +31,7 @@ class Networkclient():
         self.network_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         #initialize the sockets
-        self.unix_server.bind(self.client_address)
+        self.unix_server.bind(LOCAL_UNIX_SOCKET)
         self.unix_server.listen(1)
 
         self.inputs = [self.unix_server, self.network_server]
@@ -40,6 +40,7 @@ class Networkclient():
 
         #queues
 
+        self.query_response_queue = {} #for storing responses to quick queries
         #key = taskid, value = request
         self.transmit_queue = {}
         #key = original_taskid, value = response
@@ -145,7 +146,7 @@ class Networkclient():
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
         if len(self.order_of_keys_in_chunk_queue)>0:
-            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
+            list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if bself.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
             if len(list_of_keys_with_timeout)>0:
                 log.debug('retransmission timeout event')
                 #assume packet is lost
@@ -177,6 +178,15 @@ class Networkclient():
                 #pass
                 pass
 
+            if s in self.query_response_queue:
+                log.debug('sending query response')
+                msg = self.query_response_queue.pop(s)
+                log.debug('Sending query response of length %d to query' % len(msg))
+                s.sendall(str(len(msg)).zfill(10))
+                s.sendall(msg)
+                self.outputs.remove(s)
+                status = 0
+
             if s not in self.sock_to_taskid:
                 return status
 
@@ -196,16 +206,46 @@ class Networkclient():
                 status = 0
                 #close this after writing is done
                 #s.close()
+                                 
         except Exception as exc:
             log.debug(repr(exc))
         finally:
             #s.close()
             pass
         return status
+    
+    def handle_special_request(self, msg, s):
+        status = 1
+        try:
+            log.debug('Received %s' % msg)
+            response = "default response"
+            if msg == "chunks":
+                #construct task list
+                list_of_tasks = list(set([ctr[1] for ctr in self.order_of_keys_in_chunk_queue]))
+                #count the number of outstanding chunks
+                taskstring = ['Transmit:\n']
+                for task in list_of_tasks:
+                    a1 = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1]==task]
+                    taskstring.append(str(task) + ' : ' + str(len(a1)) + ' left out of ' + str(a1[0][4]) + '\n')
 
+                taskstring.append(repr(self.order_of_keys_in_chunk_queue))
+                response = ''.join(taskstring)
+                
+                status = 0
+                self.query_response_queue[s] = response
+            # if len(msg) < 4:
+            #     status = 0
             
-
-
+        except:
+            pass
+        if status==0:
+            #this is a special request, so takes care of transferring from input queue to
+            #output queue
+            log.debug('adding to output queue')
+            self.inputs.remove(s)
+            self.outputs.append(s)
+        return status
+          
     def main_loop(self):
         while self.inputs:
             try:
@@ -219,12 +259,15 @@ class Networkclient():
                         self.inputs.append(connection)
                         log.debug('Accepted filesystem connection')
                         log.debug('number of connections %d' % len(self.inputs))
+                            
                     if s is not self.unix_server and s.family == socket.AF_UNIX:
                         log.debug('Listen to filesystem connection')
                         #s is a client connection from a local process
                         #read length of tcp message
                         message = self.receive_filesystem_request(s)
-                        self.add_filesystem_request_to_transmit_queue(message, s)
+                        if self.handle_special_request(message, s) == 1: #this returns 1 if message is special
+                            self.add_filesystem_request_to_transmit_queue(message, s)
+                            
                     if s.family == socket.AF_INET:
                         log.debug('Receiving information from remote filesystem')
                         #s is a network client
@@ -235,6 +278,7 @@ class Networkclient():
                         self.send_packets_to_remote_filesystem(s)
 
                     if s is not self.unix_server and s.family == socket.AF_UNIX:
+                        log.debug('Inside output queue')
                         if self.send_response_to_local_filesystem(s)==0:
                             #close socket if response successfully written
                             s.close()
@@ -255,7 +299,8 @@ if __name__=='__main__':
         sys.exit(1)
     
     try:
-        os.remove(LOCAL_UNIX_SOCKET)
+        if os.path.exists(LOCAL_UNIX_SOCKET): os.remove(LOCAL_UNIX_SOCKET)
+        os.remove(LOCAL_UNIX_SOCKET_FOR_QUERY)
     except OSError:
         pass
     network_client = Networkclient(sys.argv[1], int(sys.argv[2]))
