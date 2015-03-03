@@ -140,10 +140,11 @@ class Networkserver():
                 #find out key info
                 candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
                 #remove from chunk_queue
-                key = candidate_list[0]
-                if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
-                self.order_of_keys_in_chunk_queue.remove(key)
-                del self.chunk_queue[key]
+                if len(candidate_list)>0:
+                    key = candidate_list[0]
+                    if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
+                    self.order_of_keys_in_chunk_queue.remove(key)
+                    del self.chunk_queue[key]
 
             if obj[2] == 'pac':# and obj[0][0] not in self.completed_tasks:
                 log.debug('pac')
