@@ -60,7 +60,7 @@ class Operations(llfuse.Operations):
         sock.setblocking(1)
 
         try:
-            msg = json.dumps(command)
+            msg = pickle.dumps(command)
             sock.sendall(str(len(msg)).zfill(10))
             sock.sendall(msg)
             #sendmsg(sock, str(len(msg)).zfill(10))

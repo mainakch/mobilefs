@@ -109,7 +109,7 @@ class Networkclient():
     def handle_remote_filesystem_response(self, s):
         log.debug('Received data from network server')
         data, self.network_server_address = s.recvfrom(DATAGRAM_SIZE)
-        obj = json.loads(data)
+        obj = pickle.loads(data)
         self.lastreceived = time.time()
         
         if obj[2] == 'ack':
@@ -131,7 +131,7 @@ class Networkclient():
             if obj[0][1] not in self.completed_tasks:
                 self.receive_chunk_queue[key] = val
             #send ack
-            s.sendto(json.dumps([0, obj[0], 'ack']), self.network_server_address)
+            s.sendto(pickle.dumps([0, obj[0], 'ack']), self.network_server_address)
             #check if all packets have been received for the same original_task_id
             #there's a more efficient way to do this
             list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[1] == key[1]]
@@ -167,7 +167,7 @@ class Networkclient():
                 for key in keys:
                     self.unacknowledged_packets[key] = time.time()
                     self.lastsent = time.time()
-                    s.sendto(json.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
+                    s.sendto(pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
                 
 
     def send_response_to_local_filesystem(self, s):
