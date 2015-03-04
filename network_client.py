@@ -214,7 +214,11 @@ class Networkclient():
             #s.close()
             pass
         return status
-    
+
+    def send_state(self):
+        #function to compute string 
+        return 'Not implemented' 
+        
     def handle_special_request(self, msg, s):
         status = 1
         try:
@@ -282,6 +286,7 @@ class Networkclient():
                         #log.debug('Inside output queue')
                         if self.send_response_to_local_filesystem(s)==0:
                             #close socket if response successfully written
+                            log.debug(self.send_state())
                             s.close()
 
                 for s in exceptional:
