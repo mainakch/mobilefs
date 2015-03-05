@@ -32,14 +32,23 @@ class Entryattributes():
         self.st_nlink = stat.st_nlink
         self.st_uid = stat.st_uid
         self.st_gid = stat.st_gid
-        self.st_rdev = stat.st_dev
+        try:
+            self.st_rdev = stat.st_dev
+        except:
+            self.st_rdev = stat.st_rdev
         self.st_size = stat.st_size
         self.st_atime = stat.st_atime
         self.st_mtime = stat.st_mtime
         self.st_ctime = stat.st_ctime
-        self.st_atime_ns = int(self.st_atime*10**9)
-        self.st_ctime_ns = int(self.st_ctime*10**9)
-        self.st_mtime_ns = int(self.st_mtime*10**9)
+        try:
+            self.st_atime_ns = int(self.st_atime*10**9)
+            self.st_ctime_ns = int(self.st_ctime*10**9)
+            self.st_mtime_ns = int(self.st_mtime*10**9)
+        except:
+            self.st_atime_ns = None
+            self.st_ctime_ns = None
+            self.st_mtime_ns = None
+            
         self.generation = 0
         self.entry_timeout = 1
         self.attr_timeout = 1
