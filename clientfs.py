@@ -318,16 +318,14 @@ class Operations(llfuse.Operations):
     def read(self, fh, offset, length):
         log.debug('read')
 
-        return self.send_command_and_receive_response(("lseekread", fh, offset, length))
+        return b64decode(self.send_command_and_receive_response(("lseekread", fh, offset, length)))
         #os.lseek(fh, offset, 0)
         #return os.read(fh, length)
                 
     def write(self, fh, offset, buf):
         log.debug('write %s' % buf)
 
-        return self.send_command_and_receive_response(("lseekwrite", fh, offset, buf))
-        os.lseek(fh, offset, 0)
-        return os.write(fh, buf)
+        return self.send_command_and_receive_response(("lseekwrite", fh, offset, b64encode(buf)))
    
     def release(self, fh):
         log.debug('release')

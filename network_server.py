@@ -101,11 +101,11 @@ class Networkserver():
                 
             if args[0] == 'lseekread':
                 os.lseek(args[1], args[2], 0)
-                response = os.read(args[1], args[3])
+                response = b64encode(os.read(args[1], args[3]))
 
             if args[0] == 'lseekwrite':
                 os.lseek(args[1], args[2], 0)
-                response = os.write(args[1], args[3])
+                response = os.write(args[1], b64decode(args[3]))
 
             if args[0] == 'lstat':
                 response = os.lstat(args[1])
