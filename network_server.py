@@ -64,6 +64,26 @@ class Networkserver():
             if args[0] == 'chmod':
                 os.chmod(args[1], args[2])
 
+            if args[0] == 'setattr':
+                pathname = args[1]
+                attr = args[2]
+
+                if attr.st_mode is not None:
+                    os.chmod(pathname, attr.st_mode)
+                if attr.st_size is not None:
+                    try:
+                        fd = os.open(pathname, os.O_RDWR)
+                        os.ftruncate(fd, attr.st_size)
+                        os.close(fd)
+                    except Exception as exc:
+                        log.debug('Error in truncate %s' % repr(exc))
+                        pass
+                if (attr.st_atime is not None) or (attr.st_mtime is not None):
+                    os.utime(pathname, (attr.st_atime, attr.st_mtime))
+
+                if (attr.st_gid is not None) or (attr.st_uid is not None):
+                    os.lchown(pathname, attr.st_uid, attr.st_gid)
+                    
             if args[0] == 'close':
                 os.close(args[1])
 

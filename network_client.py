@@ -8,9 +8,9 @@ network_client.py - Sends remote requests, receives response and returns respons
 from constants import *
 
 log = logging.getLogger('network_client')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.DEBUG)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 log.addHandler(ch)
 

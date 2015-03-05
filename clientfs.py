@@ -241,16 +241,25 @@ class Operations(llfuse.Operations):
         return self.getattr(inode)
 
     def setattr(self, inode, attr):
+        '''Change attributes of *inode*
+        
+        *attr* is an `EntryAttributes` instance with the new
+        attributes. Only the attributes `~EntryAttributes.st_size`,
+        `~EntryAttributes.st_mode`, `~EntryAttributes.st_uid`,
+        `~EntryAttributes.st_gid`, `~EntryAttributes.st_atime` and
+        `~EntryAttributes.st_mtime` are relevant. Unchanged attributes
+        will have a value `None`.
+        
+        The method should return a new `EntryAttributes` instance
+        with the updated attributes (i.e., all attributes except for
+        `~EntryAttributes.entry_timeout` should be set).
+        '''
+
         log.debug('setattr %s' % repr((inode, attr)))
         log.debug(repr((attr.st_mode, self.inode_path_map[inode])))
 
-        if attr.st_mode is not None:
-            self.send_command_and_receive_response(("chmod", self.inode_path_map[inode], attr.st_mode))
-        # try:
-        #     if attr.st_mode is not None:
-        #         os.chmod(self.inode_path_map[inode], attr.st_mode)
-        # except OSError as exc:
-        #     raise FUSEError(exc.errno)
+        self.send_command_and_receive_response(("setattr", self.inode_path_map[inode], Entryattributes(attr)))
+
         return self.getattr(inode)
 
     def mknod(self, inode_p, name, mode, rdev, ctx):
@@ -301,7 +310,7 @@ class Operations(llfuse.Operations):
         
     def access(self, inode, mode, ctx):
         log.debug('access')
-        #Always has access, this may need to be changed for filesystems
+
         #where user does not have access
         #pylint: disable=R0201,W0613
         return True
