@@ -216,8 +216,14 @@ class Networkclient():
         return status
 
     def send_state(self):
-        #function to compute string 
-        return 'Not implemented' 
+        #function to compute string
+	fout = open("state_file",'w')
+	pickle.dump(self.order_of_keys_in_chunk_queue, fout)
+	fout.close()
+	
+	#fin = open("user_input",'rb')
+	#command = pickle.load(fin)
+        return 
         
     def handle_special_request(self, msg, s):
         status = 1

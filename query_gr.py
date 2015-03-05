@@ -4,11 +4,10 @@ import llfuse
 from argparse import ArgumentParser
 import stat
 from llfuse import FUSEError
-import csv
 import pickle
 from constants import *
-from time import sleep
 from Tkinter import *
+from itertools import groupby
 
 def display_graphics(wnd) : 
 	
@@ -21,7 +20,14 @@ def display_graphics(wnd) :
 def display_data(wnd,data):
 		
 	#data = (Priority, ID, $, packet#, out of, time)	
-	
+
+	#for task_id, group in groupby(data, lambda x: x[1]): #group by tasks, for each task..,
+		#least_packet = min(group, key = lambda x : x[3]) # take the earliest packet
+		#progress = float(least_packet[2])/float(least_packet[3])
+		
+		 	
+
+
 	info = [(row[0], row[1], row[3], row[4]) for row in data]	
  
 	btn_lst= []
