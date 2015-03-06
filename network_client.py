@@ -78,11 +78,18 @@ class Networkclient():
     def augment_timestamp_info_key(self, key):
         return (key[0], key[1], key[2], key[3], time.time())
 
-    def add_filesystem_request_to_transmit_queue(self, message, s):
+    
+    def add_filesystem_request_to_transmit_queue(self, message):
         log.debug('adding request to transmit queue')
         self.taskid += 1
+
+        #add to transmit queue
+        self.transmit_queue[self.taskid] = message
+        return self.taskid
+
+    def add_request_to_chunk_queue(self, taskid, message, s):
         #add message to the chunk_queue
-        (keys, chunks) = self.split_task(self.taskid, message)
+        (keys, chunks) = self.split_task(taskid, message)
         #add keys to order_of_keys_in_chunk_queue
         self.order_of_keys_in_chunk_queue.extend(keys)
         #sort by priority
@@ -91,8 +98,8 @@ class Networkclient():
         for (key, val) in zip(keys, chunks):
             self.chunk_queue[key] = val
         #add association between sock and taskid
-        self.sock_to_taskid[s] = self.taskid
-        self.taskid_to_sock[self.taskid] = s
+        self.sock_to_taskid[s] = taskid
+        self.taskid_to_sock[taskid] = s
         #remove from readables
         self.inputs.remove(s)
         #add to writables
@@ -111,40 +118,44 @@ class Networkclient():
     def handle_remote_filesystem_response(self, s):
         log.debug('Received data from network server')
         data, self.network_server_address = s.recvfrom(DATAGRAM_SIZE)
-        obj = pickle.loads(data)
-        self.lastreceived = time.time()
-        
-        if obj[2] == 'ack':
-            #find out key info
-            candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
-            #remove from chunk_queue
-            if len(candidate_list)>0:
-                key = candidate_list[0]
-                if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
-                self.order_of_keys_in_chunk_queue.remove(key)
-                del self.chunk_queue[key]
+        try:
+            obj = pickle.loads(data)
+            self.lastreceived = time.time()
 
-        if obj[2] == 'pac':# and obj[0][1] not in self.completed_tasks:
-            #add to receive chunk queue queue
-            log.debug('Received packet %s ' % repr(obj[0]))
-            
-            key = self.augment_timestamp_info_key(obj[0])
-            val = obj[1]
-            #add packet to receive chunk if not in completed task
-            if obj[0][1] not in self.completed_tasks:
-                self.receive_chunk_queue[key] = val
-            #send ack
-            s.sendto(pickle.dumps([0, obj[0], 'ack']), self.network_server_address)
-            #check if all packets have been received for the same original_task_id
-            #there's a more efficient way to do this
-            list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[1] == key[1]]
-            if len(list_of_recv_chunks) == key[3]:
-                list_of_recv_chunks.sort(key = lambda x: x[2])
-                #all chunks have been received
-                #transfer to receive_queue
-                self.receive_queue[key[1]] = ''.join([self.receive_chunk_queue.pop(ctr) for ctr in list_of_recv_chunks])
-                #mark timestamp in completed queue
+            if obj[2] == 'ack':
+                #find out key info
+                candidate_list = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == obj[1][0] and ctr[3] == obj[1][2]]
+                #remove from chunk_queue
+                if len(candidate_list)>0:
+                    key = candidate_list[0]
+                    if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
+                    self.order_of_keys_in_chunk_queue.remove(key)
+                    del self.chunk_queue[key]
+
+            if obj[2] == 'pac':# and obj[0][1] not in self.completed_tasks:
+                #add to receive chunk queue queue
+                log.debug('Received packet %s ' % repr(obj[0]))
+
+                key = self.augment_timestamp_info_key(obj[0])
+                val = obj[1]
+                #add packet to receive chunk if not in completed task
+                if obj[0][1] not in self.completed_tasks:
+                    self.receive_chunk_queue[key] = val
+                #send ack
+                s.sendto(pickle.dumps([0, obj[0], 'ack']), self.network_server_address)
+                #check if all packets have been received for the same original_task_id
+                #there's a more efficient way to do this
+                list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[1] == key[1]]
+                if len(list_of_recv_chunks) == key[3]:
+                    list_of_recv_chunks.sort(key = lambda x: x[2])
+                    #all chunks have been received
+                    #transfer to receive_queue
+                    self.receive_queue[key[1]] = ''.join([self.receive_chunk_queue.pop(ctr) for ctr in list_of_recv_chunks])
+                    #mark timestamp in completed queue
                 self.completed_tasks[key[1]] = time.time()
+        except Exception as exc:
+            log.debug('Error in received datagram handling:')
+            log.debug(exc)
 
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
@@ -170,9 +181,11 @@ class Networkclient():
                 for key in keys:
                     self.unacknowledged_packets[key] = time.time()
                     self.lastsent = time.time()
-                    s.sendto(pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_server_address)
-                
-
+                    string_to_be_sent = pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac'])
+                    log.debug('Length of datagram %d' % len(string_to_be_sent))
+                    if len(string_to_be_sent)>512: sys.exit(1)
+                    s.sendto(string_to_be_sent, self.network_server_address)
+                    
     def send_response_to_local_filesystem(self, s):
         #TODO: add code to handle network error
         status = 1 #not completed
@@ -206,6 +219,7 @@ class Networkclient():
                 #cleanup
                 del self.taskid_to_sock[key]
                 self.outputs.remove(s)
+                del self.transmit_queue[key]
                 status = 0
                 #close this after writing is done
                 #s.close()
@@ -284,7 +298,8 @@ class Networkclient():
                         #read length of tcp message
                         message = self.receive_filesystem_request(s)
                         if self.handle_special_request(message, s) == 1: #this returns 1 if message is special
-                            self.add_filesystem_request_to_transmit_queue(message, s)
+                            taskid = self.add_filesystem_request_to_transmit_queue(message)
+                            self.add_request_to_chunk_queue(taskid, message, s)
                             
                     if s.family == socket.AF_INET:
                         log.debug('Receiving information from remote filesystem')

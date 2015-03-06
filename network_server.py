@@ -231,7 +231,10 @@ class Networkserver():
                 for key in keys:
                     self.unacknowledged_packets[key] = time.time()
                     self.lastsent = time.time()
-                    s.sendto(pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac']), self.network_client_address)
+                    string_to_be_sent = pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac'])
+                    log.debug('Length of datagram %d' % len(string_to_be_sent))
+                    if len(string_to_be_sent)>512: sys.exit(1)
+                    s.sendto(string_to_be_sent, self.network_client_address)
 
     def split_task(self, taskid, original_taskid, taskstring):
         #this splits up the taskstring into a list of chunks
