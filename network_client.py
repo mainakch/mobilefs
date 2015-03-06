@@ -152,7 +152,7 @@ class Networkclient():
                     #transfer to receive_queue
                     self.receive_queue[key[1]] = ''.join([self.receive_chunk_queue.pop(ctr) for ctr in list_of_recv_chunks])
                     #mark timestamp in completed queue
-                self.completed_tasks[key[1]] = time.time()
+                    self.completed_tasks[key[1]] = time.time()
         except Exception as exc:
             log.debug('Error in received datagram handling:')
             log.debug(exc)
