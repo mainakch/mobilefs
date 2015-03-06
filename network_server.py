@@ -95,17 +95,18 @@ class Networkserver():
                 response = []
                 for name in list_of_dirs:
                     fullname = os.path.join(args[1], name)
-                    stat = os.lstat(fullname)
-                    entry = Entryattributes(stat)
-                    response.append((name, entry, fullname))
+                    if not os.path.islink(fullname):
+                        stat = os.lstat(fullname)
+                        entry = Entryattributes(stat)
+                        response.append((name, entry, fullname))
                 
             if args[0] == 'lseekread':
                 os.lseek(args[1], args[2], 0)
-                response = os.read(args[1], args[3])
+                response = b64encode(os.read(args[1], args[3]))
 
             if args[0] == 'lseekwrite':
                 os.lseek(args[1], args[2], 0)
-                response = os.write(args[1], args[3])
+                response = os.write(args[1], b64decode(args[3]))
 
             if args[0] == 'lstat':
                 response = os.lstat(args[1])
@@ -136,6 +137,9 @@ class Networkserver():
 
             if args[0] == 'unlink':
                 response = os.unlink(args[1])
+
+            if args[0] == 'access':
+                response = os.access(args[1], args[2])
 
         except OSError as exc:
             response = exc

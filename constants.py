@@ -12,6 +12,7 @@ import time
 import logging
 import pickle
 import errno
+from base64 import b64encode, b64decode
 
 from random import randint
 
@@ -21,9 +22,9 @@ WINDOW = 10
 LOCAL_UNIX_SOCKET = '/tmp/socket_c_and_nc'
 LOCAL_UNIX_SOCKET_FOR_QUERY = '/tmp/socket_mobilefs'
 DATAGRAM_SIZE = 512
-RETRANSMISSION_TIMEOUT = 1 #seconds
+RETRANSMISSION_TIMEOUT = 0.2 #seconds
 FILESYSTEM_TIMEOUT = 10
-LISTDIR_TIMEOUT = 2
+LISTDIR_TIMEOUT = 5
 
 class Entryattributes():
     def __init__(self, stat):

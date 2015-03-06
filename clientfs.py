@@ -112,14 +112,7 @@ class Operations(llfuse.Operations):
     def readlink(self, inode):
         log.debug('readlink %s' % repr(inode))
         path = self.inode_path_map[inode]
-
         target = self.send_command_and_receive_response(("readlink", path))
-        
-        # try:
-        #     target = os.readlink(path)
-        # except OSError as exc:
-        #     raise FUSEError(exc.errno)
-        
         return str2bytes(target)
             
     def opendir(self, inode):
@@ -139,11 +132,12 @@ class Operations(llfuse.Operations):
         #log.debug('readdir %s' % repr(list_of_entries))
         log.debug('readdir offset %d' % offset)
 
-        try:
-            name = self.listdir_buffer[path][offset]
-        except:
-            #if path in self.listdir_buffer: del self.listdir_buffer[path]
-            return []
+        if offset>0: raise FUSEError(1)
+        # try:
+        #     name = self.listdir_buffer[path][offset]
+        # except:
+        #     #if path in self.listdir_buffer: del self.listdir_buffer[path]
+        #     return []
 
         final_response = []
         ctr = 0
@@ -310,24 +304,20 @@ class Operations(llfuse.Operations):
         
     def access(self, inode, mode, ctx):
         log.debug('access')
-
-        #where user does not have access
         #pylint: disable=R0201,W0613
-        return True
+        return self.send_command_and_receive_response(("access", self.inode_path_map[inode], mode))
 
     def read(self, fh, offset, length):
         log.debug('read')
 
-        return self.send_command_and_receive_response(("lseekread", fh, offset, length))
+        return b64decode(self.send_command_and_receive_response(("lseekread", fh, offset, length)))
         #os.lseek(fh, offset, 0)
         #return os.read(fh, length)
                 
     def write(self, fh, offset, buf):
         log.debug('write %s' % buf)
 
-        return self.send_command_and_receive_response(("lseekwrite", fh, offset, buf))
-        os.lseek(fh, offset, 0)
-        return os.write(fh, buf)
+        return self.send_command_and_receive_response(("lseekwrite", fh, offset, b64encode(buf)))
    
     def release(self, fh):
         log.debug('release')
@@ -382,7 +372,7 @@ def main():
     
     log.debug('Mounting...')
     llfuse.init(operations, options.mountpoint, 
-                [  b'fsname=test_passthrough', b"nonempty" ])
+                [  b'fsname=clientfs', b"nonempty" ])
     
     try:
         log.debug('Entering main loop..')
