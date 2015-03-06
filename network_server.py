@@ -58,6 +58,9 @@ class Networkserver():
 
     def execute_message(self, taskstring):
         log.debug('inside execute_message: %s' % taskstring)
+        f1 = open('/tmp/deleteme','w')
+        f1.write(taskstring)
+        f1.close()
         args = pickle.loads(taskstring)
         response = None
         try:

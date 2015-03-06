@@ -63,6 +63,10 @@ class Operations(llfuse.Operations):
             msg = pickle.dumps(command)
             sock.sendall(str(len(msg)).zfill(10))
             sock.sendall(msg)
+
+            f1 = open('/tmp/deleteme','w')
+            f1.write(msg)
+            f1.close()
             #sendmsg(sock, str(len(msg)).zfill(10))
             #sendmsg(sock, msg)
 
@@ -76,6 +80,10 @@ class Operations(llfuse.Operations):
                 raise FUSEError(response[1])
             #raise FUSEError(errno.EMSGSIZE)
 
+        except Exception as exc:
+            #TODO: make this more informative
+            log.debug(repr(exc))
+            raise FUSEError(errno.EAGAIN)
         finally:
             sock.close()
             pass
