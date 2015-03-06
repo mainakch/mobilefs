@@ -132,11 +132,12 @@ class Operations(llfuse.Operations):
         #log.debug('readdir %s' % repr(list_of_entries))
         log.debug('readdir offset %d' % offset)
 
-        try:
-            name = self.listdir_buffer[path][offset]
-        except:
-            #if path in self.listdir_buffer: del self.listdir_buffer[path]
-            return []
+        if offset>0: raise FUSEError(1)
+        # try:
+        #     name = self.listdir_buffer[path][offset]
+        # except:
+        #     #if path in self.listdir_buffer: del self.listdir_buffer[path]
+        #     return []
 
         final_response = []
         ctr = 0

@@ -24,7 +24,7 @@ LOCAL_UNIX_SOCKET_FOR_QUERY = '/tmp/socket_mobilefs'
 DATAGRAM_SIZE = 512
 RETRANSMISSION_TIMEOUT = 0.2 #seconds
 FILESYSTEM_TIMEOUT = 10
-LISTDIR_TIMEOUT = 2
+LISTDIR_TIMEOUT = 5
 
 class Entryattributes():
     def __init__(self, stat):
