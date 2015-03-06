@@ -37,7 +37,8 @@ class Networkserver():
         self.outputs = [self.network_server]
 
         #queues
-        
+        #key=remote taskid, value = list of chunks received so far
+        self.recv_list_of_chunks = {}
         #key = taskid, value = request
         self.transmit_queue = {}
         #key = original_taskid, value = response
@@ -180,19 +181,26 @@ class Networkserver():
                 val = obj[1]
                 #add packet to receive chunk if not in self.completed_tasks
                 if obj[0][1] not in self.completed_tasks:
-                    self.receive_chunk_queue[key] = val
+                    if key[0] not in self.recv_list_of_chunks: self.recv_list_of_chunks[key[0]] = []
+                    if key[2] not in self.recv_list_of_chunks[key[0]]:
+                        self.recv_list_of_chunks[key[0]].append(key[2])
+                        self.receive_chunk_queue[key] = val
                 #send ack
                 s.sendto(pickle.dumps([0, obj[0], 'ack']), self.network_client_address)
                 #check if all packets have been received for the same taskid
-                #there's a more efficient way to do this
-                list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[0] == key[0]]
-                if len(list_of_recv_chunks) == key[3]:
+
+
+                if key[0] in self.recv_list_of_chunks and len(self.recv_list_of_chunks[key[0]]) == key[3]:
+                    
+                    list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[0] == key[0]]
                     list_of_recv_chunks.sort(key = lambda x: x[2])
                     #all chunks have been received
                     #transfer to receive_queue
                     self.receive_queue[key[0]] = ''.join([self.receive_chunk_queue.pop(ctr) for ctr in list_of_recv_chunks])
                     #mark timestamp in completed queue
                     self.completed_tasks[key[0]] = time.time()
+                    #remove list of received chunk indices
+                    del self.recv_list_of_chunks[key[0]]
 
                     #execute action
                     string_response = self.execute_message(self.receive_queue.pop(key[0]))

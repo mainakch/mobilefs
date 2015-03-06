@@ -42,6 +42,8 @@ class Networkclient():
 
         #queues
 
+        
+        self.recv_list_of_chunks = {}
         self.query_response_queue = {} #for storing responses to quick queries
         #key = taskid, value = request
         self.transmit_queue = {}
@@ -140,19 +142,27 @@ class Networkclient():
                 val = obj[1]
                 #add packet to receive chunk if not in completed task
                 if obj[0][1] not in self.completed_tasks:
+                    if key[1] not in self.recv_list_of_chunks: self.recv_list_of_chunks[key[1]] = []
+                    if key[2] not in self.recv_list_of_chunks[key[1]]:
+                        self.recv_list_of_chunks[key[1]].append(key[2])
+                        self.receive_chunk_queue[key] = val
+                  
                     self.receive_chunk_queue[key] = val
                 #send ack
                 s.sendto(pickle.dumps([0, obj[0], 'ack']), self.network_server_address)
                 #check if all packets have been received for the same original_task_id
-                #there's a more efficient way to do this
-                list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[1] == key[1]]
-                if len(list_of_recv_chunks) == key[3]:
+
+                if key[1] in self.recv_list_of_chunks and  len(self.recv_list_of_chunks[key[1]]) == key[3]:
+                    list_of_recv_chunks = [ctr for ctr in self.receive_chunk_queue.keys() if ctr[1] == key[1]]
                     list_of_recv_chunks.sort(key = lambda x: x[2])
                     #all chunks have been received
                     #transfer to receive_queue
                     self.receive_queue[key[1]] = ''.join([self.receive_chunk_queue.pop(ctr) for ctr in list_of_recv_chunks])
                     #mark timestamp in completed queue
                     self.completed_tasks[key[1]] = time.time()
+                    #remove list of received chunk indices
+                    del self.recv_list_of_chunks[key[1]]
+                    
         except Exception as exc:
             log.debug('Error in received datagram handling:')
             log.debug(exc)
