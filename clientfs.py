@@ -112,14 +112,7 @@ class Operations(llfuse.Operations):
     def readlink(self, inode):
         log.debug('readlink %s' % repr(inode))
         path = self.inode_path_map[inode]
-
         target = self.send_command_and_receive_response(("readlink", path))
-        
-        # try:
-        #     target = os.readlink(path)
-        # except OSError as exc:
-        #     raise FUSEError(exc.errno)
-        
         return str2bytes(target)
             
     def opendir(self, inode):
@@ -378,7 +371,7 @@ def main():
     
     log.debug('Mounting...')
     llfuse.init(operations, options.mountpoint, 
-                [  b'fsname=test_passthrough', b"nonempty" ])
+                [  b'fsname=clientfs', b"nonempty" ])
     
     try:
         log.debug('Entering main loop..')

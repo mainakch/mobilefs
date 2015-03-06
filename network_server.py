@@ -95,9 +95,10 @@ class Networkserver():
                 response = []
                 for name in list_of_dirs:
                     fullname = os.path.join(args[1], name)
-                    stat = os.lstat(fullname)
-                    entry = Entryattributes(stat)
-                    response.append((name, entry, fullname))
+                    if not os.path.islink(fullname):
+                        stat = os.lstat(fullname)
+                        entry = Entryattributes(stat)
+                        response.append((name, entry, fullname))
                 
             if args[0] == 'lseekread':
                 os.lseek(args[1], args[2], 0)
