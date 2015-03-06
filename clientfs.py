@@ -310,10 +310,8 @@ class Operations(llfuse.Operations):
         
     def access(self, inode, mode, ctx):
         log.debug('access')
-
-        #where user does not have access
         #pylint: disable=R0201,W0613
-        return True
+        return self.send_command_and_receive_response(("access", self.inode_path_map[inode], mode))
 
     def read(self, fh, offset, length):
         log.debug('read')

@@ -137,6 +137,9 @@ class Networkserver():
             if args[0] == 'unlink':
                 response = os.unlink(args[1])
 
+            if args[0] == 'access':
+                response = os.access(args[1], args[2])
+
         except OSError as exc:
             response = exc
 
