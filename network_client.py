@@ -21,7 +21,7 @@ class Networkclient():
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
         self.last_sent_to_fs = 0 #timestamp of last received packet
-        self.time_sleep = 0.003
+        self.time_sleep = 0.0000000003
 
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
@@ -146,8 +146,7 @@ class Networkclient():
                     if key[2] not in self.recv_list_of_chunks[key[1]]:
                         self.recv_list_of_chunks[key[1]].append(key[2])
                         self.receive_chunk_queue[key] = val
-                  
-                    self.receive_chunk_queue[key] = val
+                   
                 #send ack
                 s.sendto(pickle.dumps([0, obj[0], 'ack']), self.network_server_address)
                 #check if all packets have been received for the same original_task_id
