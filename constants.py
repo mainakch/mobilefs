@@ -17,7 +17,7 @@ from base64 import b64encode, b64decode
 from random import randint
 
 SOCK_CHUNK_SIZE = 1024
-CHUNK_SIZE = 300
+CHUNK_SIZE = 400
 WINDOW = 10
 LOCAL_UNIX_SOCKET = '/tmp/socket_c_and_nc'
 LOCAL_UNIX_SOCKET_FOR_QUERY = '/tmp/socket_mobilefs'
