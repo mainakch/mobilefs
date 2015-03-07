@@ -203,7 +203,7 @@ class Networkserver():
                     #execute action
                     string_response = self.execute_message(self.receive_queue.pop(key[0]))
                     f1 = open('/tmp/deleteme','w')
-                    f1.write(taskstring)
+                    f1.write(string_response)
                     f1.close()
                     #log.debug(string_response)
 
