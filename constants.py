@@ -27,6 +27,7 @@ FILESYSTEM_TIMEOUT = 10
 LISTDIR_TIMEOUT = 5
 #congestion control parameters
 SSTHRESH = 10
+MAX_WINDOW_SIZE = 100
 
 class Entryattributes():
     def __init__(self, stat):
@@ -91,5 +92,5 @@ def next_window(window_size, iscongested):
             new_window_size = window_size*2
         else:
             new_window_size = window_size+1
-    return new_window_size
+    return min(MAX_WINDOW_SIZE, new_window_size)
     
