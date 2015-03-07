@@ -71,10 +71,6 @@ class Operations(llfuse.Operations):
             #length = sock.recv(10)
             #log.debug(str(length))
             data = recvall(sock, int(length))
-            f1 = open('/tmp/deleteme','w')
-            f1.write(data)
-            f1.close()
-
             try:
                 response = pickle.loads(data)
             except:
