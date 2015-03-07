@@ -43,7 +43,7 @@ class Networkserver():
         self.transmit_queue = {}
         #key = original_taskid, value = response
         self.receive_queue = {}
-        #key = (priority, taskid, original_taskid, chunknum, chunktotalnum, timestamp when added to queue), value = chunkof request
+        #key = (priority, taskid, original_taskid, chunknum, chunktotalnum, timestamp when added to queue/transmitted), value = chunkof request
         self.chunk_queue = {}
         #key = (taskid, original_taskid, chunknum, chunktotalnum, timestamp when received), value=chunkofresponse
         self.receive_chunk_queue = {}
@@ -220,9 +220,11 @@ class Networkserver():
 
     def send_remote_response(self, s):
         if len(self.order_of_keys_in_chunk_queue)>0:
+            self.window = next_window(self.window, False)
             list_of_keys_with_timeout = [ctr for ctr in self.unacknowledged_packets.keys() if self.unacknowledged_packets[ctr]<time.time()-RETRANSMISSION_TIMEOUT]
             if len(list_of_keys_with_timeout)>0:
-                #assume packet is lost
+                #assume packet is lost/network is congested
+                self.window = next_window(self.window, True)
                 for key in list_of_keys_with_timeout:
                     if key in self.unacknowledged_packets: del self.unacknowledged_packets[key]
 
@@ -242,7 +244,7 @@ class Networkserver():
                     self.lastsent = time.time()
                     string_to_be_sent = pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac'])
                     log.debug('Length of datagram %d' % len(string_to_be_sent))
-                    if len(string_to_be_sent)>512: sys.exit(1)
+                    if len(string_to_be_sent)>DATAGRAM_SIZE: sys.exit(1)
                     s.sendto(string_to_be_sent, self.network_client_address)
 
     def split_task(self, taskid, original_taskid, taskstring):

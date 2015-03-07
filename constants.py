@@ -25,6 +25,8 @@ DATAGRAM_SIZE = 512
 RETRANSMISSION_TIMEOUT = 0.2 #seconds
 FILESYSTEM_TIMEOUT = 10
 LISTDIR_TIMEOUT = 5
+#congestion control parameters
+SSTHRESH = 10
 
 class Entryattributes():
     def __init__(self, stat):
@@ -79,3 +81,14 @@ def sendmsg(sock, msg):
 
     if current_ptr >= len(msg):
         sock.send(msg[current_ptr:-1])
+
+def next_window(window_size, iscongested):
+    new_window_size = window_size
+    if iscongested:
+        new_window_size = max(1, int(window_size/2))
+    else:
+        if window_size<SSTHRESH:
+            new_window_size = window_size*2
+        else:
+            new_window_size = window_size+1
+    
