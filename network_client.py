@@ -42,7 +42,7 @@ class Networkclient():
 
         #queues
 
-        
+        self.taskid_to_description = {}        
         self.recv_list_of_chunks = {}
         self.query_response_queue = {} #for storing responses to quick queries
         #key = taskid, value = request
@@ -143,7 +143,7 @@ class Networkclient():
                 #add packet to receive chunk if not in completed task
                 if obj[0][1] not in self.completed_tasks:
                     if key[1] not in self.recv_list_of_chunks: self.recv_list_of_chunks[key[1]] = []
-                    if key[2] not in self.recv_list_of_chunks[key[1]]:
+                    if key[2] not in self.recv_list_of_chunks[key[1]] and key[1] in self.taskid_to_sock:
                         self.recv_list_of_chunks[key[1]].append(key[2])
                         self.receive_chunk_queue[key] = val
                    
@@ -241,6 +241,7 @@ class Networkclient():
         finally:
             #s.close()
             pass
+        
         return status
 
     def send_state(self):
@@ -257,26 +258,63 @@ class Networkclient():
         status = 1
         try:
             log.debug('Received %s' % msg)
-            response = "default response"
-            if msg == "chunks":
+            response = "1"
+            if msg == "state":
                 #construct task list
                 list_of_tasks = list(set([ctr[1] for ctr in self.order_of_keys_in_chunk_queue]))
                 #count the number of outstanding chunks
-                taskstring = ['Transmit:\n']
+                taskstring = []
                 for task in list_of_tasks:
                     a1 = [ctr for ctr in self.order_of_keys_in_chunk_queue if ctr[1]==task]
-                    taskstring.append(str(task) + ' : ' + str(len(a1)) + ' left out of ' + str(a1[0][4]) + '\n')
+                    taskstring.append((a1[0][0], a1[0][1], self.taskid_to_description[task], len(a1), a1[0][4]))
 
-                taskstring.append(repr(self.order_of_keys_in_chunk_queue))
-                response = ''.join(taskstring)
-                
+                #construct receive task list
+                list_of_tasks = self.taskid_to_sock.keys()
+                #count the number of outstanding chunks
+                taskreceive = []
+                for task in list_of_tasks:
+                    a1 = [ctr for ctr in self.receive_chunk_queue if ctr[2]==task]
+                    if len(a1)>0:
+                        taskreceive.append((a1[0][0], a1[0][2], self.taskid_to_description[task], len(a1), a1[0][4]))
+                    else:
+                        taskreceive.append((-1, task, self.taskid_to_description[task], 0, 0))
+
+                taskreceive.sort(key = lambda x: x[0])
+                taskcomplete = [(ctr, self.taskid_to_description[ctr], self.completed_tasks[ctr]) for ctr in self.completed_tasks.keys()]
+                taskcomplete.sort(key = lambda x: -x[2])
+
                 status = 0
-                self.query_response_queue[s] = response
+                self.query_response_queue[s] = pickle.dumps([taskstring, taskreceive, taskcomplete])
+            if msg[:4] == "kill":
+                taskid_to_kill = int(msg.split()[1])
+                if taskid_to_kill in self.taskid_to_sock:
+                    self.receive_queue[taskid_to_kill] = pickle.dumps(('err', errno.EINTR))
+                    s1 = self.taskid_to_sock[taskid_to_kill]
+                    if self.send_response_to_local_filesystem(s1) == 0:
+                        s1.close()
+                        response = "0"
+
+                self.query_response_queue[s] = response            
+                status = 0
+            if msg[:7] == "killall":
+                for taskid_to_kill in self.taskid_to_sock.keys():
+                    self.receive_queue[taskid_to_kill] = pickle.dumps(('err', errno.EINTR))
+                    s1 = self.taskid_to_sock[taskid_to_kill]
+                    if self.send_response_to_local_filesystem(s1) == 0:
+                        s1.close()
+                        response = "0"
+
+                self.query_response_queue[s] = response            
+                status = 0
+
             # if len(msg) < 4:
             #     status = 0
             
         except:
             pass
+        # finally:
+        #     if s not in self.query_response_queue:
+        #         self.query_response_queue[s] = response
         if status==0:
             #this is a special request, so takes care of transferring from input queue to
             #output queue
@@ -311,6 +349,7 @@ class Networkclient():
                         message = self.receive_filesystem_request(s)
                         if self.handle_special_request(message, s) == 1: #this returns 1 if message is special
                             taskid = self.add_filesystem_request_to_transmit_queue(message)
+                            self.taskid_to_description[taskid] = pickle.loads(message)[0]
                             self.add_request_to_chunk_queue(taskid, message, s)
                             
                     if s.family == socket.AF_INET:

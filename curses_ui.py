@@ -3,9 +3,11 @@ import time
 import sys
 import subprocess
 import os
+from constants import *
 
 stdscr = curses.initscr()
 curses.cbreak()
+curses.noecho()
 stdscr.keypad(1)
 
 devnull = open('/dev/null', 'w')
@@ -57,7 +59,7 @@ stdscr.refresh()
 p_fs = subprocess.Popen(["python2", "clientfs.py", remote_root, local_mt], stderr=devnull, stdout=devnull)
 
 maxval = stdscr.getmaxyx()
-stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; r: Refresh tasklist')
+stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; r: Refresh tasklist; K: Kill all tasks')
 stdscr.refresh()
 
 NUM_LINES = min((maxval[0]-10)/3, 5)
@@ -67,6 +69,33 @@ stdscr.addstr(6+NUM_LINES, 0, 'Receive queue', curses.A_BOLD)
 stdscr.addstr(6+2*NUM_LINES, 0, 'Completed tasks', curses.A_BOLD)
 
 stdscr.refresh()
+
+def send_command_and_receive_response(command):
+    """This function sends command to the network and returns response. If response
+    is an error it raises an error. command is a tuple the first element of which
+    is a string description of the command and the second to last elements are
+     arguments to the command."""
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect('/tmp/socket_c_and_nc')
+    
+    data = 'No response'
+    try:
+        msg = command
+        sock.sendall(str(len(msg)).zfill(10))
+        sock.sendall(msg)
+        #sendmsg(sock, str(len(msg)).zfill(10))
+        #sendmsg(sock, msg)
+
+        length = recvall(sock, 10)
+        #length = sock.recv(10)
+        #log.debug(str(length))
+        data = recvall(sock, int(length))
+       
+    finally:
+        sock.close()
+       
+    return data
 
 
 def display_transmit(list_of_transmitting_tasks):
@@ -124,12 +153,10 @@ def update_display(list_transmitting, list_receive, list_complete):
     display_transmit(list_transmitting)
     stdscr.refresh()
 
-sample_list_tr = [(0,1,2,3,4)]
-sample_list_res = [(0,1,2,3,4)]
-sample_list_complete = [(0,1,2)]
-update_display(sample_list_tr, sample_list_res, sample_list_complete)
-
-update_display([], [], [])
+def update_state():
+    current_state = send_command_and_receive_response('state')
+    list_tr, list_res, list_complete = pickle.loads(current_state)
+    update_display(list_tr, list_res, list_complete)
 
 while True:
     time.sleep(0.3)
@@ -140,8 +167,25 @@ while True:
             p_net_client.kill()
             break
         else:
-            stdscr.addstr(maxval[0], 0, 'Error in unmounting', curses.A_BOLD)
+            stdscr.addstr(maxval[0]-1, 0, 'Error in unmounting', curses.A_BOLD)
             stdscr.refresh()
+    if c == ord('r'):
+        update_state()
+    if c == ord('k'):
+        stdscr.addstr(maxval[0]-2, 0, 'Enter taskid: ')
+        stdscr.refresh()
+        status = int(send_command_and_receive_response('kill ' + stdscr.getstr(maxval[0]-2, 15)))
+        stdscr.move(maxval[0]-2, 0)
+        stdscr.clrtoeol()
+        stdscr.refresh()
+    # if c == ord('K'):
+    #     status = int(send_command_and_receive_response('killall '))
+    #     stdscr.move(maxval[0]-2, 0)
+    #     stdscr.clrtoeol()
+    #     stdscr.refresh()
+        
+        
+
 
 devnull.close()
 curses.nocbreak(); stdscr.keypad(0); curses.echo()
