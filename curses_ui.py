@@ -56,6 +56,80 @@ stdscr.addstr(5, 0, 'Starting local fs...')
 stdscr.refresh()
 p_fs = subprocess.Popen(["python2", "clientfs.py", remote_root, local_mt], stderr=devnull, stdout=devnull)
 
+maxval = stdscr.getmaxyx()
+stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; r: Refresh tasklist')
+stdscr.refresh()
+
+NUM_LINES = min((maxval[0]-10)/3, 5)
+#add transport, receive and completed tasks queue
+stdscr.addstr(6, 0, 'Transmit queue', curses.A_BOLD)
+stdscr.addstr(6+NUM_LINES, 0, 'Receive queue', curses.A_BOLD)
+stdscr.addstr(6+2*NUM_LINES, 0, 'Completed tasks', curses.A_BOLD)
+
+stdscr.refresh()
+
+
+def display_transmit(list_of_transmitting_tasks):
+    #each element in the task is a tuple (priority, taskid, taskdesc, chunks, totalchunks)
+    if len(list_of_transmitting_tasks)>NUM_LINES-1: list_of_transmitting_tasks = list_of_transmitting_tasks[:NUM_LINES-1]
+    ctr=0
+    while ctr<min(len(list_of_transmitting_tasks), NUM_LINES-1):
+        task = list_of_transmitting_tasks[ctr]
+        stdscr.move(6+ctr+1, 0)
+        stdscr.clrtoeol()
+        stdscr.addstr(6+ctr+1, 0, str(task[0]) + '\t' + str(task[1]) + '\t' + str(task[2]) + '\t' + str(task[3]) + '\t' + str(task[4]))
+        ctr = ctr + 1
+    #clear remaining lines
+    while ctr<NUM_LINES-1:
+        stdscr.move(6+ctr+1, 0)
+        stdscr.clrtoeol()
+        ctr = ctr + 1
+        
+def display_receive(list_of_responses):
+    #each element is a tuple (priority, originaltaskid, taskdesc, chunks, totalchunks)
+    if len(list_of_responses)>NUM_LINES-1: list_of_responses = list_of_responses[:NUM_LINES-1]
+    ctr=0
+    while ctr<min(len(list_of_responses), NUM_LINES-1):
+        task = list_of_responses[ctr]
+        stdscr.move(6+ctr+1+NUM_LINES, 0)
+        stdscr.clrtoeol()
+        stdscr.addstr(6+ctr+1+NUM_LINES, 0, str(task[0]) + '\t' + str(task[1]) + '\t' + str(task[2]) + '\t' + str(task[3]) + '\t' + str(task[4]))
+        ctr = ctr + 1
+    #clear remaining lines
+    while ctr<NUM_LINES-1:
+        stdscr.move(6+ctr+1+NUM_LINES, 0)
+        stdscr.clrtoeol()
+        ctr = ctr + 1
+    
+
+def display_complete(list_of_complete):
+    #each element is a tuple (taskid, taskdesc, timestamp)
+    if len(list_of_complete)>NUM_LINES-1: list_of_complete = list_of_complete[:NUM_LINES-1]
+    ctr=0
+    while ctr<min(len(list_of_complete), NUM_LINES-1):
+        task = list_of_complete[ctr]
+        stdscr.move(6+ctr+1+2*NUM_LINES, 0)
+        stdscr.clrtoeol()
+        stdscr.addstr(6+ctr+1+2*NUM_LINES, 0, str(task[0]) + '\t' + str(task[1]) + '\t' + str(task[2]))
+        ctr = ctr + 1
+    #clear remaining lines
+    while ctr<NUM_LINES-1:
+        stdscr.move(6+ctr+1+2*NUM_LINES, 0)
+        stdscr.clrtoeol()
+        ctr = ctr + 1
+
+def update_display(list_transmitting, list_receive, list_complete):
+    display_complete(list_complete)
+    display_receive(list_receive)
+    display_transmit(list_transmitting)
+    stdscr.refresh()
+
+sample_list_tr = [(0,1,2,3,4)]
+sample_list_res = [(0,1,2,3,4)]
+sample_list_complete = [(0,1,2)]
+update_display(sample_list_tr, sample_list_res, sample_list_complete)
+
+update_display([], [], [])
 
 while True:
     time.sleep(0.3)
@@ -66,7 +140,7 @@ while True:
             p_net_client.kill()
             break
         else:
-            stdscr.addstr(-1, 0, 'Error in unmounting', curses.A_BOLD)
+            stdscr.addstr(maxval[0], 0, 'Error in unmounting', curses.A_BOLD)
             stdscr.refresh()
 
 devnull.close()
