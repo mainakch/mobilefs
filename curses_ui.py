@@ -2,18 +2,18 @@ import curses
 import time
 import sys
 import subprocess
-import os
-from constants import *
+import pickle
+import socket
+import constants
 
 stdscr = curses.initscr()
 curses.cbreak()
 curses.noecho()
 stdscr.keypad(1)
-
 devnull = open('/dev/null', 'w')
 
 #set up screen
-if len(sys.argv)>4:
+if len(sys.argv) > 4:
     server_name = sys.argv[1]
     server_port = int(sys.argv[2])
     remote_root = sys.argv[3]
@@ -28,7 +28,6 @@ if len(sys.argv)>4:
     stdscr.addstr(3, 30, local_mt, curses.A_UNDERLINE)
     stdscr.refresh()
 else:
-    
     stdscr.addstr(0, 0, "Server name: ", curses.A_BOLD)
     stdscr.refresh()
     server_name = stdscr.getstr(0, 30)
@@ -63,7 +62,7 @@ p_fs = subprocess.Popen(["python2", "clientfs.py", remote_root,
 
 maxval = stdscr.getmaxyx()
 stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; ' +
-			  'r: Refresh tasklist; K: Kill all tasks')
+			  'r: Refresh tasklist')
 stdscr.refresh()
 
 NUM_LINES = min((maxval[0]-10)/3, 5)
@@ -84,7 +83,6 @@ def send_command_and_receive_response(command):
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect('/tmp/socket_c_and_nc')
-    
     data = 'No response'
     try:
         msg = command
@@ -93,10 +91,10 @@ def send_command_and_receive_response(command):
         #sendmsg(sock, str(len(msg)).zfill(10))
         #sendmsg(sock, msg)
 
-        length = recvall(sock, 10)
+        length = constants.recvall(sock, 10)
         #length = sock.recv(10)
         #log.debug(str(length))
-        data = recvall(sock, int(length))
+        data = constants.recvall(sock, int(length))
        
     finally:
         sock.close()
@@ -104,14 +102,14 @@ def send_command_and_receive_response(command):
     return data
 
 
-def display_transmit(list_of_transmitting_tasks):
-    # element is a tuple (priority, taskid, taskdesc, chunks, totalchunks)
-    if len(list_of_transmitting_tasks) > NUM_LINES-1:
-		list_of_transmitting_tasks =
-		list_of_transmitting_tasks[:NUM_LINES-1]
-    ctr=0
-    while ctr < min(len(list_of_transmitting_tasks), NUM_LINES-1):
-        task = list_of_transmitting_tasks[ctr]
+def display_transmit(list_of_tasks):
+    # element is a tuple (priority, taskid,
+    # taskdesc, chunks, totalchunks)
+    if len(list_of_tasks) > NUM_LINES-1:
+        list_of_tasks = list_of_tasks[:NUM_LINES-1]
+    ctr = 0
+    while ctr < min(len(list_of_tasks), NUM_LINES-1):
+        task = list_of_tasks[ctr]
         stdscr.move(6+ctr+1, 0)
         stdscr.clrtoeol()
         stdscr.addstr(6+ctr+1, 0, str(task[0]) + '\t' +
@@ -125,10 +123,11 @@ def display_transmit(list_of_transmitting_tasks):
         ctr = ctr + 1
         
 def display_receive(list_of_responses):
-    #each element is a tuple (priority, originaltaskid, taskdesc, chunks, totalchunks)
+    # each element is a tuple (priority, originaltaskid,
+    # taskdesc, chunks, totalchunks)
     if len(list_of_responses) > NUM_LINES-1:
-		list_of_responses = list_of_responses[:NUM_LINES-1]
-    ctr=0
+        list_of_responses = list_of_responses[:NUM_LINES-1]
+    ctr = 0
     while ctr < min(len(list_of_responses), NUM_LINES-1):
         task = list_of_responses[ctr]
         stdscr.move(6+ctr+1+NUM_LINES, 0)
@@ -146,9 +145,9 @@ def display_receive(list_of_responses):
 
 def display_complete(list_of_complete):
     #each element is a tuple (taskid, taskdesc, timestamp)
-    if len(list_of_complete)>NUM_LINES-1:
-		list_of_complete = list_of_complete[:NUM_LINES-1]
-    ctr=0
+    if len(list_of_complete) > NUM_LINES-1:
+        list_of_complete = list_of_complete[:NUM_LINES-1]
+    ctr = 0
     while ctr < min(len(list_of_complete), NUM_LINES-1):
         task = list_of_complete[ctr]
         stdscr.move(6+ctr+1+2*NUM_LINES, 0)
@@ -157,7 +156,7 @@ def display_complete(list_of_complete):
 					  str(task[1]) + '\t' + str(task[2]))
         ctr = ctr + 1
     #clear remaining lines
-    while ctr<NUM_LINES-1:
+    while ctr < NUM_LINES-1:
         stdscr.move(6+ctr+1+2*NUM_LINES, 0)
         stdscr.clrtoeol()
         ctr = ctr + 1
@@ -178,7 +177,7 @@ while True:
     c = stdscr.getch()
     if c == ord('u'):
         err = subprocess.call(["fusermount", "-u", local_mt])
-        if err==0:
+        if err == 0:
             p_net_client.kill()
             break
         else:
@@ -187,24 +186,21 @@ while True:
     if c == ord('r'):
         update_state()
     if c == ord('k'):
-		curses.echo()
+        curses.echo()
         stdscr.addstr(maxval[0]-2, 0, 'Enter taskid: ')
         stdscr.refresh()
-        status = int(send_command_and_receive_response(
-			'kill ' + stdscr.getstr(maxval[0]-2, 15)
-			))
-        stdscr.move(maxval[0]-2, 0)
+        status = send_command_and_receive_response(
+            'kill ' + stdscr.getstr(maxval[0]-2, 15)
+            )
+        stdscr.move(maxval[0]-2, 0)  #clear user input
         stdscr.clrtoeol()
-		curses.noecho()
+        curses.noecho()
         stdscr.refresh()
-    # if c == ord('K'):
-    #     status = int(send_command_and_receive_response('killall '))
-    #     stdscr.move(maxval[0]-2, 0)
-    #     stdscr.clrtoeol()
-    #     stdscr.refresh()
 
 #close curses screen        
 devnull.close()
-curses.nocbreak(); stdscr.keypad(0); curses.echo()
+curses.nocbreak()
+stdscr.keypad(0)
+curses.echo()
 curses.endwin()
 
