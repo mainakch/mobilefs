@@ -288,6 +288,7 @@ class Networkclient():
             if msg[:4] == "kill":
                 taskid_to_kill = int(msg.split()[1])
                 if taskid_to_kill in self.taskid_to_sock:
+                    [self.chunk_queue.pop(ctr) for ctr in self.order_of_keys_in_chunk_queue if ctr[1] == taskid_to_kill]  #remove chunks for the task
                     self.receive_queue[taskid_to_kill] = pickle.dumps(('err', errno.EINTR))
                     s1 = self.taskid_to_sock[taskid_to_kill]
                     if self.send_response_to_local_filesystem(s1) == 0:
