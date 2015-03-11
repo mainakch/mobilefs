@@ -2,8 +2,6 @@
 '''
 network_client.py - Sends remote requests, receives response and returns response
 '''
-#TODO: add automatic timeout
-#TODO: add user control
 
 from constants import *
 
@@ -21,7 +19,7 @@ class Networkclient():
         self.lastsent = 0 #timestamp of last sent packet
         self.lastreceived = 0 #timestamp of last received packet
         self.last_sent_to_fs = 0 #timestamp of last received packet
-        self.time_sleep = 0.0000000003
+        self.time_sleep = 0.0000000000003
 
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
         
@@ -373,6 +371,10 @@ class Networkclient():
                             log.debug(self.send_state())
                             s.close()
                             self.last_sent_to_fs = time.time()
+                            if len(self.taskid_to_sock.keys()) == 0:
+                                self.time_sleep = 0.003
+                            else:
+                                self.time_sleep = 0.00000000000000003
                         if self.last_sent_to_fs + 10 < time.time(): #update code with transmit queue logic
                             pass
                             
