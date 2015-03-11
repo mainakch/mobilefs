@@ -18,6 +18,7 @@ class Networkserver():
         self.lastsent = 0
         self.lastreceived = 0
         self.unacknowledged_packets = {} #this stores the keys of packets in flight and timestamp when sent
+        self.time_sleep = 0.0000000000000000003
         
         #socket address
         self.public_address = (server_address, port)
@@ -265,6 +266,13 @@ class Networkserver():
     def main_loop(self):
         while self.inputs:
             readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
+
+            #prevent cpu burn
+            if len(self.receive_chunk_queue.keys()) > 0 or len(self.chunk_queue.keys()) > 0:
+                self.time_sleep = 0.0000000000000000000000003
+            else:
+                self.time_sleep = 0.003
+                
             for s in readable:
                 self.handle_remote_request(s)
             for s in writable:
@@ -274,6 +282,7 @@ class Networkserver():
                 self.inputs.remove(s)
                 if s in self.outputs:
                     self.outputs.remove(s)
+            time.sleep(self.time_sleep)
 
 if __name__=='__main__':
     if len(sys.argv)<3:
