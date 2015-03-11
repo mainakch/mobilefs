@@ -193,11 +193,10 @@ class Networkclient():
                     self.lastsent = time.time()
                     string_to_be_sent = pickle.dumps([self.remove_priority_timestamp_info_from_key(key), self.chunk_queue[key], 'pac'])
                     log.debug('Length of datagram %d' % len(string_to_be_sent))
-                    if len(string_to_be_sent)>512: sys.exit(1)
+                    if len(string_to_be_sent)>DATAGRAM_SIZE: sys.exit(1)
                     s.sendto(string_to_be_sent, self.network_server_address)
                     
     def send_response_to_local_filesystem(self, s):
-        #TODO: add code to handle network error
         status = 1 #not completed
         try:
             if self.sock_to_timestamp[s] < time.time() - FILESYSTEM_TIMEOUT:
