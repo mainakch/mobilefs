@@ -61,7 +61,7 @@ p_fs = subprocess.Popen(["python2", "clientfs.py", remote_root,
 						 local_mt], stderr=devnull, stdout=devnull)
 
 maxval = stdscr.getmaxyx()
-stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; d: Kill all tasks; ' +
+stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; ' +
 			  'r: Refresh tasklist')
 stdscr.refresh()
 
