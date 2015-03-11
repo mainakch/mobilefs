@@ -196,13 +196,13 @@ while True:
         stdscr.clrtoeol()
         curses.noecho()
         stdscr.refresh()
-    if c == ord('d'):
-        curses.echo()
-        status = send_command_and_receive_response('killall')
-        stdscr.move(maxval[0]-2, 0)  #clear user input
-        stdscr.clrtoeol()
-        curses.noecho()
-        stdscr.refresh()
+    # if c == ord('d'):
+    #     curses.echo()
+    #     status = send_command_and_receive_response('killall')
+    #     stdscr.move(maxval[0]-2, 0)  #clear user input
+    #     stdscr.clrtoeol()
+    #     curses.noecho()
+    #     stdscr.refresh()
         
 
 #close curses screen        
