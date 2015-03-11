@@ -61,7 +61,7 @@ p_fs = subprocess.Popen(["python2", "clientfs.py", remote_root,
 						 local_mt], stderr=devnull, stdout=devnull)
 
 maxval = stdscr.getmaxyx()
-stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; ' +
+stdscr.addstr(maxval[0]-1, 0, 'u: Unmount fs; k: Kill task; d: Kill all tasks; ' +
 			  'r: Refresh tasklist')
 stdscr.refresh()
 
@@ -196,6 +196,14 @@ while True:
         stdscr.clrtoeol()
         curses.noecho()
         stdscr.refresh()
+    if c == ord('d'):
+        curses.echo()
+        status = send_command_and_receive_response('killall')
+        stdscr.move(maxval[0]-2, 0)  #clear user input
+        stdscr.clrtoeol()
+        curses.noecho()
+        stdscr.refresh()
+        
 
 #close curses screen        
 devnull.close()
