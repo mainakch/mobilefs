@@ -20,7 +20,7 @@ if len(sys.argv) > 4:
     local_mt = sys.argv[4]
     stdscr.addstr(0, 0, "Server name: ", curses.A_BOLD)
     stdscr.addstr(1, 0, "Server port: ", curses.A_BOLD)
-    stdscr.addstr(2, 0, "Remote mountpoint: ", curses.A_BOLD)
+    stdscr.addstr(2, 0, "Remote directory: ", curses.A_BOLD)
     stdscr.addstr(3, 0, "Local mountpoint: ", curses.A_BOLD)
     stdscr.addstr(0, 30, server_name, curses.A_UNDERLINE)
     stdscr.addstr(1, 30, str(server_port), curses.A_UNDERLINE)
@@ -38,7 +38,7 @@ else:
     server_port = int(stdscr.getstr(1, 30))
     stdscr.addstr(1, 30, str(server_port), curses.A_UNDERLINE)
 
-    stdscr.addstr(2, 0, "Remote mountpoint: ", curses.A_BOLD)
+    stdscr.addstr(2, 0, "Remote directory: ", curses.A_BOLD)
     stdscr.refresh()
     remote_root = stdscr.getstr(2, 30)
     stdscr.addstr(2, 30, remote_root, curses.A_UNDERLINE)
