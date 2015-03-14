@@ -119,8 +119,8 @@ class Networkclient():
         log.debug('Received data from network server')
         data, self.network_server_address = s.recvfrom(DATAGRAM_SIZE)
         try:
-            obj = pickle.loads(data)
             self.lastreceived = time.time()
+            obj = pickle.loads(data)
 
             if obj[2] == 'ack':
                 #find out key info
@@ -163,9 +163,18 @@ class Networkclient():
         except Exception as exc:
             log.debug('Error in received datagram handling:')
             log.debug(exc)
+            log.debug(self.network_server_address)
+
 
     def send_packets_to_remote_filesystem(self, s):
         #if possible send packets
+        if self.lastreceived < time.time() - HEARTBEAT_TIMEOUT:
+            #this is to inform server of address change in roaming
+            string_to_be_sent = pickle.dumps([0, 0, 'hrt'])
+            log.debug('Length of datagram %d' % len(string_to_be_sent))
+            s.sendto(string_to_be_sent, self.network_server_address)
+            
+            
         if len(self.order_of_keys_in_chunk_queue)>0:
             self.window = next_window(self.window, False)
             log.debug(self.window)

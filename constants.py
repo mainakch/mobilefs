@@ -2,7 +2,6 @@
 constants.py - Set up common parameters
 """
 
-
 import socket
 import os
 import json
@@ -25,6 +24,7 @@ DATAGRAM_SIZE = 512
 RETRANSMISSION_TIMEOUT = 0.2 #seconds
 FILESYSTEM_TIMEOUT = 10
 LISTDIR_TIMEOUT = 5
+HEARTBEAT_TIMEOUT = 5
 #congestion control parameters
 SSTHRESH = 10
 MAX_WINDOW_SIZE = 100

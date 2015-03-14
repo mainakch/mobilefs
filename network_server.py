@@ -161,7 +161,10 @@ class Networkserver():
             data, self.network_client_address = s.recvfrom(DATAGRAM_SIZE)
             obj = pickle.loads(data)
             self.lastreceived = time.time()
-            
+            if obj[2] == 'hrt':
+                log.debug('Heartbeat received')
+                log.debug('Client address: %s' % repr(self.network_client_address))
+                
             if obj[2] == 'ack':
                 log.debug('ack')
                 #find out key info
